@@ -1,18 +1,12 @@
 [package]
-name = "buf_redux"
-version = "0.8.4"
-authors = ["Austin Bonander <austin.bonander@gmail.com>"]
-
+name = "buffer-redux"
+version = "0.1.0"
+authors = ["dignifiedquire <me@dignifiedquire.com>", "Austin Bonander <austin.bonander@gmail.com>"]
 description = "Drop-in replacements for buffered I/O in `std::io` with extra features."
-
 keywords = ["io", "buffer", "buffered"]
-
-documentation = "https://docs.rs/buf_redux"
-
-repository = "https://github.com/abonander/buf_redux"
-
+documentation = "https://docs.rs/buffer-redux"
+repository = "https://github.com/dignifiedquire/buffer-redux"
 license = "MIT OR Apache-2.0"
-
 readme = "README.md"
 
 [dependencies]

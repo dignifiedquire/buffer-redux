@@ -13,11 +13,11 @@ use std::io::{Read, Write};
 
 use super::{BufReader, BufWriter, LineWriter};
 
-use policy::{WriterPolicy, MoveStrategy, ReaderPolicy};
+use policy::{MoveStrategy, ReaderPolicy, WriterPolicy};
 
 impl<R, Rs: ReaderPolicy> fmt::Debug for BufReader<R, Rs> {
     default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("buf_redux::BufReader")
+        f.debug_struct("buffer_redux::BufReader")
             .field("reader", &"(no Debug impl)")
             .field("available", &self.buf_len())
             .field("capacity", &self.capacity())
@@ -29,7 +29,7 @@ impl<R, Rs: ReaderPolicy> fmt::Debug for BufReader<R, Rs> {
 
 impl<W: Write, Fs: WriterPolicy> fmt::Debug for BufWriter<W, Fs> {
     default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("buf_redux::BufWriter")
+        f.debug_struct("buffer_redux::BufWriter")
             .field("writer", &"(no Debug impl)")
             .field("capacity", &self.capacity())
             .field("flush_strategy", &self.policy)
@@ -39,7 +39,7 @@ impl<W: Write, Fs: WriterPolicy> fmt::Debug for BufWriter<W, Fs> {
 
 impl<W: Write> fmt::Debug for LineWriter<W> {
     default fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("buf_redux::LineWriter")
+        f.debug_struct("buffer_redux::LineWriter")
             .field("writer", &"(no Debug impl)")
             .field("capacity", &self.capacity())
             .finish()

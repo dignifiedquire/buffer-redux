@@ -17,17 +17,17 @@
 //! #### `BufReader`:
 //! ```notest
 //! - use std::io::BufReader;
-//! + use buf_redux::BufReader;
+//! + use buffer_redux::BufReader;
 //! ```
 //! #### `BufWriter`:
 //! ```notest
 //! - use std::io::BufWriter;
-//! + use buf_redux::BufWriter;
+//! + use buffer_redux::BufWriter;
 //! ```
 //! #### `LineWriter`:
 //! ```notest
 //! - use std::io::LineWriter;
-//! + use buf_redux::LineWriter;
+//! + use buffer_redux::LineWriter;
 //! ```
 //!
 //! ### More Direct Control
@@ -171,7 +171,7 @@ use buffer::BufImpl;
 
 pub mod policy;
 
-use self::policy::{ReaderPolicy, WriterPolicy, StdPolicy, FlushOnNewline};
+use self::policy::{FlushOnNewline, ReaderPolicy, StdPolicy, WriterPolicy};
 
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
@@ -198,7 +198,7 @@ const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 /// [`new_ringbuf()`]: BufReader::new_ringbuf
 /// [`with_capacity_ringbuf()`]: BufReader::with_capacity_ringbuf
 /// [ringbufs-root]: index.html#ringbuffers--slice-deque-feature
-pub struct BufReader<R, P = StdPolicy>{
+pub struct BufReader<R, P = StdPolicy> {
     // First field for null pointer optimization.
     buf: Buffer,
     inner: R,
@@ -262,7 +262,9 @@ impl<R> BufReader<R, StdPolicy> {
     /// then it will be returned in `read()` and `fill_buf()` ahead of any data from `inner`.
     pub fn with_buffer(buf: Buffer, inner: R) -> Self {
         BufReader {
-            buf, inner, policy: StdPolicy
+            buf,
+            inner,
+            policy: StdPolicy,
         }
     }
 }
@@ -273,21 +275,23 @@ impl<R, P> BufReader<R, P> {
         BufReader {
             inner: self.inner,
             buf: self.buf,
-            policy
+            policy,
         }
     }
 
     /// Mutate the current [`ReaderPolicy`](policy::ReaderPolicy) in-place.
     ///
     /// If you want to change the type, use `.set_policy()`.
-    pub fn policy_mut(&mut self) -> &mut P { &mut self.policy }
+    pub fn policy_mut(&mut self) -> &mut P {
+        &mut self.policy
+    }
 
     /// Inspect the current `ReaderPolicy`.
     pub fn policy(&self) -> &P {
         &self.policy
     }
 
-    /// Move data to the start of the buffer, making room at the end for more 
+    /// Move data to the start of the buffer, making room at the end for more
     /// reading.
     ///
     /// This is a no-op with the `*_ringbuf()` constructors (requires `slice-deque` feature).
@@ -321,14 +325,18 @@ impl<R, P> BufReader<R, P> {
     }
 
     /// Get an immutable reference to the underlying reader.
-    pub fn get_ref(&self) -> &R { &self.inner }
+    pub fn get_ref(&self) -> &R {
+        &self.inner
+    }
 
     /// Get a mutable reference to the underlying reader.
     ///
     /// ## Note
     /// Reading directly from the underlying reader is not recommended, as some
     /// data has likely already been moved into the buffer.
-    pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
+    pub fn get_mut(&mut self) -> &mut R {
+        &mut self.inner
+    }
 
     /// Consume `self` and return the inner reader only.
     pub fn into_inner(self) -> R {
@@ -363,16 +371,19 @@ impl<R: Read, P> BufReader<R, P> {
     /// Unconditionally perform a read into the buffer.
     ///
     /// Does not invoke `ReaderPolicy` methods.
-    /// 
+    ///
     /// If the read was successful, returns the number of bytes read.
     pub fn read_into_buf(&mut self) -> io::Result<usize> {
         self.buf.read_from(&mut self.inner)
     }
 
     /// Box the inner reader without losing data.
-    pub fn boxed<'a>(self) -> BufReader<Box<Read + 'a>, P> where R: 'a {
+    pub fn boxed<'a>(self) -> BufReader<Box<Read + 'a>, P>
+    where
+        R: 'a,
+    {
         let inner: Box<Read + 'a> = Box::new(self.inner);
-        
+
         BufReader {
             inner,
             buf: self.buf,
@@ -402,7 +413,9 @@ impl<R: Read, P: ReaderPolicy> BufRead for BufReader<R, P> {
         // This execution order is important; the policy may want to resize the buffer or move data
         // before reading into it.
         while self.should_read() && self.buf.usable_space() > 0 {
-            if self.read_into_buf()? == 0 { break; };
+            if self.read_into_buf()? == 0 {
+                break;
+            };
         }
 
         Ok(self.buffer())
@@ -417,7 +430,7 @@ impl<R: Read, P: ReaderPolicy> BufRead for BufReader<R, P> {
 
 impl<R: fmt::Debug, P: fmt::Debug> fmt::Debug for BufReader<R, P> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("buf_redux::BufReader")
+        fmt.debug_struct("buffer_redux::BufReader")
             .field("reader", &self.inner)
             .field("buf_len", &self.buf_len())
             .field("capacity", &self.capacity())
@@ -559,7 +572,10 @@ impl<W: Write> BufWriter<W> {
     /// it will be written out on the next flush!
     pub fn with_buffer(buf: Buffer, inner: W) -> BufWriter<W> {
         BufWriter {
-            buf, inner, policy: StdPolicy, panicked: false,
+            buf,
+            inner,
+            policy: StdPolicy,
+            panicked: false,
         }
     }
 }
@@ -571,7 +587,10 @@ impl<W: Write, P> BufWriter<W, P> {
         let (inner, buf) = self.into_inner_();
 
         BufWriter {
-            inner, buf, policy, panicked
+            inner,
+            buf,
+            policy,
+            panicked,
         }
     }
 
@@ -640,7 +659,9 @@ impl<W: Write, P> BufWriter<W, P> {
     }
 
     fn flush_buf(&mut self, amt: usize) -> io::Result<()> {
-        if amt == 0 || amt > self.buf.len() { return Ok(()) }
+        if amt == 0 || amt > self.buf.len() {
+            return Ok(());
+        }
 
         self.panicked = true;
         let ret = self.buf.write_max(amt, &mut self.inner);
@@ -706,14 +727,13 @@ impl<W: Write + Seek, P: WriterPolicy> Seek for BufWriter<W, P> {
 
 impl<W: Write + fmt::Debug, P: fmt::Debug> fmt::Debug for BufWriter<W, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("buf_redux::BufWriter")
+        f.debug_struct("buffer_redux::BufWriter")
             .field("writer", &self.inner)
             .field("capacity", &self.capacity())
             .field("policy", &self.policy)
             .finish()
     }
 }
-
 
 /// Attempt to flush the buffer to the underlying writer.
 ///
@@ -725,9 +745,7 @@ impl<W: Write, P> Drop for BufWriter<W, P> {
             // instead of ignoring a failed flush, call the handler
             let buf_len = self.buf.len();
             if let Err(err) = self.flush_buf(buf_len) {
-                DROP_ERR_HANDLER.with(|deh| {
-                    (*deh.borrow())(&mut self.inner, &mut self.buf, err)
-                });
+                DROP_ERR_HANDLER.with(|deh| (*deh.borrow())(&mut self.inner, &mut self.buf, err));
             }
         }
     }
@@ -805,7 +823,8 @@ impl<W: Write> LineWriter<W> {
     /// Flush the buffer and unwrap, returning the inner writer on success,
     /// or a type wrapping `self` plus the error otherwise.
     pub fn into_inner(self) -> Result<W, IntoInnerError<Self>> {
-        self.0.into_inner()
+        self.0
+            .into_inner()
             .map_err(|IntoInnerError(inner, e)| IntoInnerError(LineWriter(inner), e))
     }
 
@@ -816,7 +835,7 @@ impl<W: Write> LineWriter<W> {
     }
 
     /// Consume `self` and return both the underlying writer and the buffer.
-    pub fn into_inner_with_buf(self) -> (W, Buffer){
+    pub fn into_inner_with_buf(self) -> (W, Buffer) {
         self.0.into_inner_with_buffer()
     }
 }
@@ -833,7 +852,7 @@ impl<W: Write> Write for LineWriter<W> {
 
 impl<W: Write + fmt::Debug> fmt::Debug for LineWriter<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("buf_redux::LineWriter")
+        f.debug_struct("buffer_redux::LineWriter")
             .field("writer", self.get_ref())
             .field("capacity", &self.capacity())
             .finish()
@@ -1015,12 +1034,16 @@ impl Buffer {
     /// Get an immutable slice of the available bytes in this buffer.
     ///
     /// Call `.consume()` to remove bytes from the beginning of this slice.
-    pub fn buf(&self) -> &[u8] { self.buf.buf() }
+    pub fn buf(&self) -> &[u8] {
+        self.buf.buf()
+    }
 
     /// Get a mutable slice representing the available bytes in this buffer.
     ///
     /// Call `.consume()` to remove bytes from the beginning of this slice.
-    pub fn buf_mut(&mut self) -> &mut [u8] { self.buf.buf_mut() }
+    pub fn buf_mut(&mut self) -> &mut [u8] {
+        self.buf.buf_mut()
+    }
 
     /// Read from `rdr`, returning the number of bytes read or any errors.
     ///
@@ -1105,8 +1128,12 @@ impl Buffer {
         while self.len() > 0 && max > 0 {
             let len = cmp::min(self.len(), max);
             let n = match wrt.write(&self.buf()[..len]) {
-                Ok(0) => return Err(io::Error::new(io::ErrorKind::WriteZero,
-                                                   "Buffer::write_all() got zero-sized write")),
+                Ok(0) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::WriteZero,
+                        "Buffer::write_all() got zero-sized write",
+                    ))
+                }
                 Ok(n) => n,
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e),
@@ -1127,8 +1154,12 @@ impl Buffer {
     pub fn write_all<W: Write + ?Sized>(&mut self, wrt: &mut W) -> io::Result<()> {
         while self.len() > 0 {
             match self.write_to(wrt) {
-                Ok(0) => return Err(io::Error::new(io::ErrorKind::WriteZero,
-                                                   "Buffer::write_all() got zero-sized write")),
+                Ok(0) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::WriteZero,
+                        "Buffer::write_all() got zero-sized write",
+                    ))
+                }
                 Ok(_) => (),
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => (),
                 Err(e) => return Err(e),
@@ -1184,7 +1215,7 @@ impl Buffer {
 
 impl fmt::Debug for Buffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("buf_redux::Buffer")
+        f.debug_struct("buffer_redux::Buffer")
             .field("capacity", &self.capacity())
             .field("len", &self.len())
             .finish()
@@ -1238,7 +1269,7 @@ impl<R: Read> Read for Unbuffer<R> {
 
 impl<R: fmt::Debug> fmt::Debug for Unbuffer<R> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("buf_redux::Unbuffer")
+        fmt.debug_struct("buffer_redux::Unbuffer")
             .field("reader", &self.inner)
             .field("buffer", &self.buf)
             .finish()
@@ -1259,7 +1290,9 @@ pub fn copy_buf<B: BufRead, W: Write>(b: &mut B, w: &mut W) -> io::Result<u64> {
             Ok(buf) => buf,
         };
 
-        if copied == 0 { break; }
+        if copied == 0 {
+            break;
+        }
 
         b.consume(copied);
 
@@ -1283,7 +1316,8 @@ thread_local!(
 /// ### Panics
 /// If called from within a handler previously provided to this function.
 pub fn set_drop_err_handler<F: 'static>(handler: F)
-where F: Fn(&mut Write, &mut Buffer, io::Error)
+where
+    F: Fn(&mut Write, &mut Buffer, io::Error),
 {
     DROP_ERR_HANDLER.with(|deh| *deh.borrow_mut() = Box::new(handler))
 }

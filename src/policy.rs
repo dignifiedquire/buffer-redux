@@ -55,7 +55,9 @@ pub trait ReaderPolicy {
     /// If the read will ignore the buffer entirely (if the buffer is empty and the amount to be
     /// read matches or exceeds its capacity) or if `BufReader::read_into_buf()` was called to force
     /// a read into the buffer manually, this method will not be called.
-    fn before_read(&mut self, buffer: &mut Buffer) -> DoRead { DoRead(buffer.len() == 0) }
+    fn before_read(&mut self, buffer: &mut Buffer) -> DoRead {
+        DoRead(buffer.len() == 0)
+    }
 
     /// Called after bytes are consumed from the buffer.
     ///
@@ -76,10 +78,10 @@ impl ReaderPolicy for StdPolicy {}
 ///
 /// ### Example
 /// ```rust
-/// use buf_redux::BufReader;
-/// use buf_redux::policy::MinBuffered;
+/// use buffer_redux::BufReader;
+/// use buffer_redux::policy::MinBuffered;
 /// use std::io::{BufRead, Cursor};
-/// 
+///
 /// let data = (1 .. 16).collect::<Vec<u8>>();
 ///
 /// // normally you should use `BufReader::new()` or give a capacity of several KiB or more
@@ -115,7 +117,9 @@ impl MinBuffered {
 impl ReaderPolicy for MinBuffered {
     fn before_read(&mut self, buffer: &mut Buffer) -> DoRead {
         // do nothing if we have enough data
-        if buffer.len() >= self.0 { do_read!(false) }
+        if buffer.len() >= self.0 {
+            do_read!(false)
+        }
 
         let cap = buffer.capacity();
 
@@ -155,7 +159,11 @@ pub trait WriterPolicy {
     ///
     /// By default, flushes the buffer if the usable space is smaller than the incoming write.
     fn before_write(&mut self, buf: &mut Buffer, incoming: usize) -> FlushAmt {
-        FlushAmt(if incoming > buf.usable_space() { buf.len() } else { 0 })
+        FlushAmt(if incoming > buf.usable_space() {
+            buf.len()
+        } else {
+            0
+        })
     }
 
     /// Return `true` if the buffer should be flushed after reading into it.
@@ -179,7 +187,11 @@ pub struct FlushAtLeast(pub usize);
 impl WriterPolicy for FlushAtLeast {
     fn before_write(&mut self, buf: &mut Buffer, incoming: usize) -> FlushAmt {
         ensure_capacity(buf, self.0);
-        FlushAmt(if incoming > buf.usable_space() { buf.len() } else { 0 })
+        FlushAmt(if incoming > buf.usable_space() {
+            buf.len()
+        } else {
+            0
+        })
     }
 
     fn after_write(&mut self, buf: &Buffer) -> FlushAmt {
@@ -249,17 +261,17 @@ fn ensure_capacity(buf: &mut Buffer, min_cap: usize) {
 
 #[cfg(test)]
 mod test {
-    use {BufReader, BufWriter};
     use policy::*;
     use std::io::{BufRead, Cursor, Write};
+    use {BufReader, BufWriter};
 
     #[test]
     fn test_min_buffered() {
         let min_buffered = 4;
-        let data = (0 .. 20).collect::<Vec<u8>>();
+        let data = (0..20).collect::<Vec<u8>>();
         // create a reader with 0 capacity
-        let mut reader = BufReader::with_capacity(0, Cursor::new(data))
-            .set_policy(MinBuffered(min_buffered));
+        let mut reader =
+            BufReader::with_capacity(0, Cursor::new(data)).set_policy(MinBuffered(min_buffered));
 
         // policy reserves the required space in the buffer
         assert_eq!(reader.fill_buf().unwrap(), &[0, 1, 2, 3][..]);
@@ -280,7 +292,10 @@ mod test {
         reader.consume(4);
         assert_eq!(reader.fill_buf().unwrap(), &[10, 11, 12, 13]);
         reader.consume(2);
-        assert_eq!(reader.fill_buf().unwrap(), &[12, 13, 14, 15, 16, 17, 18, 19]);
+        assert_eq!(
+            reader.fill_buf().unwrap(),
+            &[12, 13, 14, 15, 16, 17, 18, 19]
+        );
         reader.consume(8);
         assert_eq!(reader.fill_buf().unwrap(), &[])
     }
@@ -336,7 +351,10 @@ mod test {
         // flushed another 4 bytes
         assert_eq!(*writer.get_ref(), &[1, 2, 3, 4, 5, 6, 7, 8]);
         // `.into_inner()` should flush always
-        assert_eq!(writer.into_inner().unwrap(), &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        assert_eq!(
+            writer.into_inner().unwrap(),
+            &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        );
     }
 
     #[test]
@@ -353,7 +371,10 @@ mod test {
         assert_eq!(*writer.get_ref(), &[1, 2, 3, 0, 4, 5]);
 
         assert_eq!(writer.write(&[0]).unwrap(), 1);
-        assert_eq!(*writer.get_ref(), &[1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0]);
+        assert_eq!(
+            *writer.get_ref(),
+            &[1, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0]
+        );
     }
 
     #[test]
@@ -367,9 +388,15 @@ mod test {
         assert_eq!(*writer.get_ref(), &[1, 2, 3, b'\n']);
 
         assert_eq!(writer.write(&[6, 7, 8, 9, b'\n', 11, 12]).unwrap(), 7);
-        assert_eq!(*writer.get_ref(), &[1, 2, 3, b'\n', 4, 5, 6, 7, 8, 9, b'\n']);
+        assert_eq!(
+            *writer.get_ref(),
+            &[1, 2, 3, b'\n', 4, 5, 6, 7, 8, 9, b'\n']
+        );
 
         assert_eq!(writer.write(&[b'\n']).unwrap(), 1);
-        assert_eq!(*writer.get_ref(), &[1, 2, 3, b'\n', 4, 5, 6, 7, 8, 9, b'\n', 11, 12, b'\n']);
+        assert_eq!(
+            *writer.get_ref(),
+            &[1, 2, 3, b'\n', 4, 5, 6, 7, 8, 9, b'\n', 11, 12, b'\n']
+        );
     }
 }

@@ -1,8 +1,10 @@
-# buf\_re(a)dux 
-[![Travis](https://img.shields.io/travis/abonander/buf_redux.svg)](https://travis-ci.org/abonander/buf_redux)
-[![Crates.io](https://img.shields.io/crates/v/buf_redux.svg)](https://crates.io/crates/buf_redux)
-[![Crates.io](https://img.shields.io/crates/d/buf_redux.svg)](https://crates.io/crates/buf_redux)
-[![Crates.io](https://img.shields.io/crates/l/buf_redux.svg)](https://crates.io/crates/buf_redux)
+# buffer\_re(a)dux 
+
+[![Crates.io](https://img.shields.io/crates/v/buffer-redux.svg)](https://crates.io/crates/buffer-redux)
+[![Crates.io](https://img.shields.io/crates/d/buffer-redux.svg)](https://crates.io/crates/buffer-redux)
+[![Crates.io](https://img.shields.io/crates/l/buffer-redux.svg)](https://crates.io/crates/buffer-redux)
+
+> Fork of the unmaintained [`buf_redux`](https://github.com/abonander/buf_redux).
 
 Drop-in replacements for buffered I/O types in `std::io`.
 
@@ -41,36 +43,30 @@ appears in the buffer (used to implement `LineWriter`).
 
 ## Usage
 
-#### [Documentation](http://docs.rs/buf_redux/)
+#### [Documentation](http://docs.rs/buffer-redux/)
 
 `Cargo.toml`:
 ```toml
 [dependencies]
-buf_redux = "0.2"
+buffer-redux = "0.2"
 ```
-
-`lib.rs` or `main.rs`:
-```rust
-extern crate buf_redux;
-```
-
 And then simply swap the import of the types you want to replace:
 
 #### `BufReader`:
 ```
 - use std::io::BufReader;
-+ use buf_redux::BufReader;
++ use buffer_redux::BufReader;
 ```
 #### `BufWriter`:
 ```
 - use std::io::BufWriter;
-+ use buf_redux::BufWriter;
++ use buffer_redux::BufWriter;
 ```
 
 #### `LineWriter`:
 ```
 - use std::io::LineWriter;
-+ use buf_redux::LineWriter;
++ use buffer_redux::LineWriter;
 ```
 
 ### Using `MinBuffered`
@@ -79,8 +75,8 @@ certain number of bytes in its buffer. This can be useful for parsing applicatio
 certain amount of lookahead.
 
 ```rust
-use buf_redux::BufReader;
-use buf_redux::policy::MinBuffered;
+use buffer_redux::BufReader;
+use buffer_redux::policy::MinBuffered;
 use std::io::{BufRead, Cursor};
 
 let data = (1 .. 16).collect::<Vec<u8>>();
