@@ -13,9 +13,9 @@
 //! These tests are copied from rust/src/libstd/io/buffered.rs
 //! They assume exact capacity allocation
 
+use crate::{BufReader, BufWriter, LineWriter};
 use std::io::prelude::*;
 use std::io::{self, SeekFrom};
-use crate::{BufReader, BufWriter, LineWriter};
 
 /// A dummy reader intended at testing short-reads propagation.
 pub struct ShortReader {
