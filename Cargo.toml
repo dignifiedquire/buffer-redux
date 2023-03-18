@@ -8,6 +8,7 @@ documentation = "https://docs.rs/buffer-redux"
 repository = "https://github.com/dignifiedquire/buffer-redux"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
+edition = "2021"
 
 [dependencies]
 safemem = "0.3"

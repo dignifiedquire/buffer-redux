@@ -7,7 +7,6 @@
 // except according to those terms.
 #![feature(test)]
 
-extern crate buffer_redux;
 extern crate test;
 
 use buffer_redux::{BufReader, BufWriter};

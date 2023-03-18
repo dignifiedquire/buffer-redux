@@ -15,7 +15,7 @@
 
 use std::io::prelude::*;
 use std::io::{self, SeekFrom};
-use {BufReader, BufWriter, LineWriter};
+use crate::{BufReader, BufWriter, LineWriter};
 
 /// A dummy reader intended at testing short-reads propagation.
 pub struct ShortReader {

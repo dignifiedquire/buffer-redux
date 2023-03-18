@@ -69,7 +69,7 @@ impl SliceDequeBuf {
         let offset = cmp::min(add, self.usable_space()) as isize;
 
         if offset < 0 {
-            panic!("BufImpl.bytes_written() arg overflowed isize: {:x}", add);
+            panic!("BufImpl.bytes_written() arg overflowed isize: {add:x}");
         }
 
         self.deque.move_tail(offset);
@@ -80,7 +80,7 @@ impl SliceDequeBuf {
             let offset = cmp::min(amt, self.len()) as isize;
 
             if offset < 0 {
-                panic!("BufImpl.consume() arg overflowed isize: {:x}", amt)
+                panic!("BufImpl.consume() arg overflowed isize: {amt:x}")
             }
 
             self.deque.move_head(offset);

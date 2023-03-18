@@ -153,7 +153,7 @@ use std::mem::ManuallyDrop;
 use std::{cmp, error, fmt, io, ptr};
 
 use self::policy::{FlushOnNewline, ReaderPolicy, StdPolicy, WriterPolicy};
-use buffer::BufImpl;
+use crate::buffer::BufImpl;
 
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 

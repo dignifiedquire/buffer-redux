@@ -22,9 +22,9 @@
 use std::io::prelude::*;
 use std::io::{self, SeekFrom};
 
-use {BufReader, Buffer, DEFAULT_BUF_SIZE};
+use crate::{BufReader, Buffer, DEFAULT_BUF_SIZE};
 
-use std_tests::ShortReader;
+use crate::std_tests::ShortReader;
 
 macro_rules! assert_capacity {
     ($buf:expr, $cap:expr) => {

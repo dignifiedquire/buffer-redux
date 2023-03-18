@@ -261,9 +261,9 @@ fn ensure_capacity(buf: &mut Buffer, min_cap: usize) {
 
 #[cfg(test)]
 mod test {
-    use policy::*;
+    use crate::policy::*;
     use std::io::{BufRead, Cursor, Write};
-    use {BufReader, BufWriter};
+    use crate::{BufReader, BufWriter};
 
     #[test]
     fn test_min_buffered() {

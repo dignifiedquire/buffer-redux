@@ -171,7 +171,7 @@ mod impl_ {
 
 #[test]
 fn read_into_full() {
-    use Buffer;
+    use crate::Buffer;
 
     let mut buffer = Buffer::with_capacity(1);
 
