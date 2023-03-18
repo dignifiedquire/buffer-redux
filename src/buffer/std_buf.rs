@@ -44,7 +44,9 @@ impl StdBuf {
         let usable_space = self.usable_space();
 
         // there's already enough space
-        if usable_space >= additional { return false }
+        if usable_space >= additional {
+            return false;
+        }
 
         // attempt to reserve additional capacity in-place
         if self.buf.reserve_in_place(additional - usable_space) {
@@ -67,32 +69,29 @@ impl StdBuf {
         self.check_cursors();
 
         // no room at the head of the buffer
-        if self.pos == 0 { return; }
+        if self.pos == 0 {
+            return;
+        }
 
         // simply move the bytes down to the beginning
         let len = self.len();
 
-        safemem::copy_over(unsafe { self.buf.as_mut_slice() },
-                           self.pos, 0, len);
+        safemem::copy_over(unsafe { self.buf.as_mut_slice() }, self.pos, 0, len);
 
         self.pos = 0;
         self.end = len;
     }
 
     pub fn buf(&self) -> &[u8] {
-        unsafe {
-            &self.buf.as_slice()[self.pos .. self.end]
-        }
+        unsafe { &self.buf.as_slice()[self.pos..self.end] }
     }
 
     pub fn buf_mut(&mut self) -> &mut [u8] {
-        unsafe {
-            &mut self.buf.as_mut_slice()[self.pos .. self.end]
-        }
+        unsafe { &mut self.buf.as_mut_slice()[self.pos..self.end] }
     }
 
     pub unsafe fn write_buf(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut_slice()[self.end ..]
+        &mut self.buf.as_mut_slice()[self.end..]
     }
 
     pub unsafe fn bytes_written(&mut self, amt: usize) {
@@ -188,7 +187,7 @@ mod impl_ {
     impl RawBuf {
         pub fn with_capacity(capacity: usize) -> Self {
             RawBuf {
-                buf: RawVec::with_capacity(capacity)
+                buf: RawVec::with_capacity(capacity),
             }
         }
 
@@ -215,7 +214,6 @@ mod impl_ {
         pub unsafe fn as_mut_slice(&mut self) -> &mut [u8] {
             slice::from_raw_parts_mut(self.buf.ptr(), self.buf.cap())
         }
-
     }
 }
 

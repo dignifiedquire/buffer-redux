@@ -37,7 +37,9 @@ impl SliceDequeBuf {
         self.deque.capacity()
     }
 
-    pub fn len(&self) -> usize { self.deque.len() }
+    pub fn len(&self) -> usize {
+        self.deque.len()
+    }
 
     pub fn usable_space(&self) -> usize {
         self.capacity() - self.len()
@@ -51,9 +53,13 @@ impl SliceDequeBuf {
     /// This method is a no-op.
     pub fn make_room(&mut self) {}
 
-    pub fn buf(&self) -> &[u8] { &self.deque }
+    pub fn buf(&self) -> &[u8] {
+        &self.deque
+    }
 
-    pub fn buf_mut(&mut self) -> &mut [u8] { &mut self.deque }
+    pub fn buf_mut(&mut self) -> &mut [u8] {
+        &mut self.deque
+    }
 
     pub unsafe fn write_buf(&mut self) -> &mut [u8] {
         self.deque.tail_head_slice()

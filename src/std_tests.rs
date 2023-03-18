@@ -88,7 +88,7 @@ fn test_buffered_reader_seek() {
 fn test_buffered_reader_seek_underflow() {
     // gimmick reader that yields its position modulo 256 for each byte
     struct PositionReader {
-        pos: u64
+        pos: u64,
     }
     impl Read for PositionReader {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -119,11 +119,17 @@ fn test_buffered_reader_seek_underflow() {
 
     let mut reader = BufReader::with_capacity(5, PositionReader { pos: 0 });
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-    assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::max_value()-5));
+    assert_eq!(
+        reader.seek(SeekFrom::End(-5)).ok(),
+        Some(u64::max_value() - 5)
+    );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // the following seek will require two underlying seeks
     let expected = 9223372036854775802;
-    assert_eq!(reader.seek(SeekFrom::Current(i64::min_value())).ok(), Some(expected));
+    assert_eq!(
+        reader.seek(SeekFrom::Current(i64::min_value())).ok(),
+        Some(expected)
+    );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // seeking to 0 should empty the buffer.
     assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
@@ -182,7 +188,9 @@ fn test_lines() {
 
 #[test]
 fn test_short_reads() {
-    let inner = ShortReader{lengths: vec![0, 1, 2, 0, 1, 0]};
+    let inner = ShortReader {
+        lengths: vec![0, 1, 2, 0, 1, 0],
+    };
     let mut reader = BufReader::new(inner);
     let mut buf = [0, 0];
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
@@ -268,7 +276,10 @@ fn test_buffered_writer_seek() {
     assert_eq!(&w.get_ref().get_ref()[..], &[0, 1, 2, 3, 4, 5, 6, 7][..]);
     assert_eq!(w.seek(SeekFrom::Start(2)).ok(), Some(2));
     w.write_all(&[8, 9]).unwrap();
-    assert_eq!(&w.into_inner().unwrap().into_inner()[..], &[0, 1, 8, 9, 4, 5, 6, 7]);
+    assert_eq!(
+        &w.into_inner().unwrap().into_inner()[..],
+        &[0, 1, 8, 9, 4, 5, 6, 7]
+    );
 }
 
 #[test]

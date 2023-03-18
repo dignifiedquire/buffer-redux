@@ -10,38 +10,27 @@ extern crate test;
 mod construction {
     use super::test;
 
-    use {BufWriter, BufReader};
+    use {BufReader, BufWriter};
 
     use std::io;
 
     #[bench]
     fn bufreader(b: &mut test::Bencher) {
-        b.iter(|| {
-            BufReader::new(io::empty())
-        });
+        b.iter(|| BufReader::new(io::empty()));
     }
 
     #[bench]
     fn std_bufreader(b: &mut test::Bencher) {
-        b.iter(|| {
-            io::BufReader::new(io::empty())
-        });
+        b.iter(|| io::BufReader::new(io::empty()));
     }
 
     #[bench]
     fn bufwriter(b: &mut test::Bencher) {
-        b.iter(|| {
-            BufWriter::new(io::sink())
-        });
+        b.iter(|| BufWriter::new(io::sink()));
     }
 
     #[bench]
     fn std_bufwriter(b: &mut test::Bencher) {
-        b.iter(|| {
-            io::BufWriter::new(io::sink())
-        });
+        b.iter(|| io::BufWriter::new(io::sink()));
     }
 }
-
-
-

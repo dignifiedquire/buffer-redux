@@ -22,20 +22,20 @@
 use std::io::prelude::*;
 use std::io::{self, SeekFrom};
 
-use {Buffer, BufReader, DEFAULT_BUF_SIZE};
+use {BufReader, Buffer, DEFAULT_BUF_SIZE};
 
 use std_tests::ShortReader;
 
 macro_rules! assert_capacity {
     ($buf:expr, $cap:expr) => {
         let cap = $buf.capacity();
-            if cfg!(windows) {
+        if cfg!(windows) {
             // Windows' minimum allocation size is 64K
             assert_eq!(cap, ::std::cmp::max(64 * 1024, cap));
         } else {
             assert_eq!(cap, $cap);
         }
-    }
+    };
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn test_buffered_reader_seek() {
 fn test_buffered_reader_seek_underflow() {
     // gimmick reader that yields its position modulo 256 for each byte
     struct PositionReader {
-        pos: u64
+        pos: u64,
     }
     impl Read for PositionReader {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -139,11 +139,17 @@ fn test_buffered_reader_seek_underflow() {
 
     let mut reader = BufReader::with_capacity(5, PositionReader { pos: 0 });
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-    assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::max_value()-5));
+    assert_eq!(
+        reader.seek(SeekFrom::End(-5)).ok(),
+        Some(u64::max_value() - 5)
+    );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // the following seek will require two underlying seeks
     let expected = 9223372036854775802;
-    assert_eq!(reader.seek(SeekFrom::Current(i64::min_value())).ok(), Some(expected));
+    assert_eq!(
+        reader.seek(SeekFrom::Current(i64::min_value())).ok(),
+        Some(expected)
+    );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // seeking to 0 should empty the buffer.
     assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
@@ -202,7 +208,9 @@ fn test_lines() {
 
 #[test]
 fn test_short_reads() {
-    let inner = ShortReader{lengths: vec![0, 1, 2, 0, 1, 0]};
+    let inner = ShortReader {
+        lengths: vec![0, 1, 2, 0, 1, 0],
+    };
     let mut reader = BufReader::new(inner);
     let mut buf = [0, 0];
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
@@ -253,7 +261,10 @@ fn test_mirror_boundary() {
     let test_slice = &[1, 2, 3, 4, 5];
     let consume_amt = read_amt - 5; // leave several bytes on the head side of the mirror
 
-    assert_eq!(buffer.read_from(&mut FakeReader(read_amt)).unwrap(), read_amt);
+    assert_eq!(
+        buffer.read_from(&mut FakeReader(read_amt)).unwrap(),
+        read_amt
+    );
     assert_eq!(buffer.usable_space(), cap - read_amt); // should be 0
     assert_eq!(buffer.read_from(&mut FakeReader(read_amt)).unwrap(), 0); // buffer is full
     buffer.consume(consume_amt);
@@ -267,8 +278,8 @@ fn test_mirror_boundary() {
 }
 
 #[test]
-fn issue_8(){
-    let source = vec![0u8; 4096*4];
+fn issue_8() {
+    let source = vec![0u8; 4096 * 4];
 
     let mut rdr = BufReader::with_capacity_ringbuf(4096, source.as_slice());
 
