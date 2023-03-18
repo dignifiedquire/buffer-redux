@@ -1,10 +1,3 @@
-// Copyright 2016-2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 //! Types which can be used to tune the behavior of `BufReader` and `BufWriter`.
 //!
 //! Some simple policies are provided for your convenience. You may prefer to create your own
@@ -22,7 +15,7 @@ pub struct DoRead(pub bool);
 /// Shorthand for `return DoRead(bool)` or `return DoRead(true)` (empty invocation)
 #[macro_export]
 macro_rules! do_read (
-    ($val:expr) => ( return $crate::policy::DoRead($val); );
+    ($val:expr) => ( return $crate::policy::DoRead($val) );
     () => ( do_read!(true); )
 );
 
@@ -56,7 +49,7 @@ pub trait ReaderPolicy {
     /// read matches or exceeds its capacity) or if `BufReader::read_into_buf()` was called to force
     /// a read into the buffer manually, this method will not be called.
     fn before_read(&mut self, buffer: &mut Buffer) -> DoRead {
-        DoRead(buffer.len() == 0)
+        DoRead(buffer.is_empty())
     }
 
     /// Called after bytes are consumed from the buffer.
@@ -235,7 +228,7 @@ pub struct FlushOn(pub u8);
 impl WriterPolicy for FlushOn {
     fn after_write(&mut self, buf: &Buffer) -> FlushAmt {
         // include the delimiter in the flush
-        FlushAmt(::memchr::memrchr(self.0, buf.buf()).map_or(0, |n| n + 1))
+        FlushAmt(memchr::memrchr(self.0, buf.buf()).map_or(0, |n| n + 1))
     }
 }
 
@@ -247,7 +240,7 @@ pub struct FlushOnNewline;
 
 impl WriterPolicy for FlushOnNewline {
     fn after_write(&mut self, buf: &Buffer) -> FlushAmt {
-        FlushAmt(::memchr::memrchr(b'\n', buf.buf()).map_or(0, |n| n + 1))
+        FlushAmt(memchr::memrchr(b'\n', buf.buf()).map_or(0, |n| n + 1))
     }
 }
 
@@ -261,9 +254,9 @@ fn ensure_capacity(buf: &mut Buffer, min_cap: usize) {
 
 #[cfg(test)]
 mod test {
-    use policy::*;
+    use crate::policy::*;
+    use crate::{BufReader, BufWriter};
     use std::io::{BufRead, Cursor, Write};
-    use {BufReader, BufWriter};
 
     #[test]
     fn test_min_buffered() {

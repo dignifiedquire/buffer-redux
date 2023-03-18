@@ -1,14 +1,6 @@
 // Original implementation Copyright 2013 The Rust Project Developers <https://github.com/rust-lang>
-//
 // Original source file: https://github.com/rust-lang/rust/blob/master/src/libstd/io/buffered.rs
-//
 // Modifications copyright 2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 
 //! Tests checking `Buffer::new_ringbuf()` and friends.
 //!
@@ -22,16 +14,19 @@
 use std::io::prelude::*;
 use std::io::{self, SeekFrom};
 
-use {BufReader, Buffer, DEFAULT_BUF_SIZE};
+use crate::{BufReader, Buffer, DEFAULT_BUF_SIZE};
 
-use std_tests::ShortReader;
+use crate::std_tests::ShortReader;
 
 macro_rules! assert_capacity {
     ($buf:expr, $cap:expr) => {
         let cap = $buf.capacity();
-        if cfg!(windows) {
+        if cfg!(target_os = "windows") {
             // Windows' minimum allocation size is 64K
-            assert_eq!(cap, ::std::cmp::max(64 * 1024, cap));
+            assert_eq!(cap, ::std::cmp::max(64 * 1024, $cap));
+        } else if cfg!(target_os = "macos") {
+            // Macos' minimum allocation size is sometimes? 16K
+            assert!(cap == $cap || cap == ::std::cmp::max(16 * 1024, $cap));
         } else {
             assert_eq!(cap, $cap);
         }
@@ -95,7 +90,7 @@ fn test_buffered_reader_seek() {
 
     assert_eq!(reader.seek(SeekFrom::Start(3)).ok(), Some(3));
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-    assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(3));
+    assert_eq!(reader.stream_position().ok(), Some(3));
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
     assert_eq!(reader.seek(SeekFrom::Current(1)).ok(), Some(4));
     assert_eq!(reader.fill_buf().ok(), Some(&[1, 2, 3, 4][..]));
@@ -152,7 +147,7 @@ fn test_buffered_reader_seek_underflow() {
     );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // seeking to 0 should empty the buffer.
-    assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
+    assert_eq!(reader.stream_position().ok(), Some(expected));
     assert_eq!(reader.get_ref().pos, expected);
 }
 
@@ -222,25 +217,6 @@ fn test_short_reads() {
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
 }
 
-#[cfg(feature = "nightly")]
-#[test]
-fn read_char_buffered() {
-    let buf = [195, 159];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
-}
-
-#[cfg(feature = "nightly")]
-#[test]
-fn test_chars() {
-    let buf = [195, 159, b'a'];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    let mut it = reader.chars();
-    assert_eq!(it.next().unwrap().unwrap(), 'ß');
-    assert_eq!(it.next().unwrap().unwrap(), 'a');
-    assert!(it.next().is_none());
-}
-
 /// Test that the ringbuffer wraps as intended
 #[test]
 fn test_mirror_boundary() {
@@ -291,7 +267,7 @@ fn issue_8() {
         rdr.consume(4000);
         // rdr.make_room(); // (only necessary with 'standard' reader)
 
-        println!("{}", n);
+        println!("{n}");
     }
 }
 

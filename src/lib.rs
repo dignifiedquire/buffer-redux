@@ -1,14 +1,7 @@
 // Original implementation Copyright 2013 The Rust Project Developers <https://github.com/rust-lang>
-//
 // Original source file: https://github.com/rust-lang/rust/blob/master/src/libstd/io/buffered.P
-//
 // Additions copyright 2016-2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+
 //! Drop-in replacements for buffered I/O types in `std::io`.
 //!
 //! These replacements retain the method names/signatures and implemented traits of their stdlib
@@ -135,12 +128,15 @@
 //!
 //! [ringbuf-wikipedia]: https://en.wikipedia.org/wiki/Circular_buffer#Optimization
 #![warn(missing_docs)]
-#![cfg_attr(feature = "nightly", feature(alloc, read_initializer, specialization))]
-#![cfg_attr(all(test, feature = "nightly"), feature(io, test))]
 
-extern crate memchr;
+// std::io's tests require exact allocation which slice_deque cannot provide
+mod buffer;
+#[cfg(all(test, feature = "slice-deque"))]
+mod ringbuf_tests;
+#[cfg(test)]
+mod std_tests;
 
-extern crate safemem;
+pub mod policy;
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -149,29 +145,8 @@ use std::io::SeekFrom;
 use std::mem::ManuallyDrop;
 use std::{cmp, error, fmt, io, ptr};
 
-#[cfg(all(feature = "nightly", test))]
-mod benches;
-
-// std::io's tests require exact allocation which slice_deque cannot provide
-#[cfg(test)]
-mod std_tests;
-
-#[cfg(all(test, feature = "slice-deque"))]
-mod ringbuf_tests;
-
-#[cfg(feature = "nightly")]
-mod nightly;
-
-#[cfg(feature = "nightly")]
-use nightly::init_buffer;
-
-mod buffer;
-
-use buffer::BufImpl;
-
-pub mod policy;
-
 use self::policy::{FlushOnNewline, ReaderPolicy, StdPolicy, WriterPolicy};
+use crate::buffer::BufImpl;
 
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
@@ -378,11 +353,11 @@ impl<R: Read, P> BufReader<R, P> {
     }
 
     /// Box the inner reader without losing data.
-    pub fn boxed<'a>(self) -> BufReader<Box<Read + 'a>, P>
+    pub fn boxed<'a>(self) -> BufReader<Box<dyn Read + 'a>, P>
     where
         R: 'a,
     {
-        let inner: Box<Read + 'a> = Box::new(self.inner);
+        let inner: Box<dyn Read + 'a> = Box::new(self.inner);
 
         BufReader {
             inner,
@@ -876,18 +851,14 @@ impl<W> IntoInnerError<W> {
     }
 }
 
-impl<W> Into<io::Error> for IntoInnerError<W> {
-    fn into(self) -> io::Error {
-        self.1
+impl<W> From<IntoInnerError<W>> for io::Error {
+    fn from(val: IntoInnerError<W>) -> Self {
+        val.1
     }
 }
 
 impl<W: Any + Send + fmt::Debug> error::Error for IntoInnerError<W> {
-    fn description(&self) -> &str {
-        error::Error::description(self.error())
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         Some(&self.1)
     }
 }
@@ -906,10 +877,16 @@ pub struct Buffer {
     zeroed: usize,
 }
 
+impl Default for Buffer {
+    fn default() -> Self {
+        Self::with_capacity(DEFAULT_BUF_SIZE)
+    }
+}
+
 impl Buffer {
     /// Create a new buffer with a default capacity.
     pub fn new() -> Self {
-        Self::with_capacity(DEFAULT_BUF_SIZE)
+        Self::default()
     }
 
     /// Create a new buffer with *at least* the given capacity.
@@ -1049,9 +1026,6 @@ impl Buffer {
     ///
     /// If there is no more room at the head of the buffer, this will return `Ok(0)`.
     ///
-    /// Uses `Read::initializer()` to initialize the buffer if the `nightly`
-    /// feature is enabled, otherwise the buffer is zeroed if it has never been written.
-    ///
     /// ### Panics
     /// If the returned count from `rdr.read()` overflows the tail cursor of this buffer.
     pub fn read_from<R: Read + ?Sized>(&mut self, rdr: &mut R) -> io::Result<usize> {
@@ -1063,14 +1037,14 @@ impl Buffer {
         if self.zeroed < cap {
             unsafe {
                 let buf = self.buf.write_buf();
-                init_buffer(&rdr, buf);
+                safemem::write_bytes(buf, 0);
             }
 
             self.zeroed = cap;
         }
 
         let read = {
-            let mut buf = unsafe { self.buf.write_buf() };
+            let buf = unsafe { self.buf.write_buf() };
             rdr.read(buf)?
         };
 
@@ -1088,7 +1062,7 @@ impl Buffer {
     /// space, this returns 0.
     pub fn copy_from_slice(&mut self, src: &[u8]) -> usize {
         let len = unsafe {
-            let mut buf = self.buf.write_buf();
+            let buf = self.buf.write_buf();
             let len = cmp::min(buf.len(), src.len());
             buf[..len].copy_from_slice(&src[..len]);
             len
@@ -1109,7 +1083,7 @@ impl Buffer {
     /// If the count returned by `wrt.write()` would cause the head cursor to overflow or pass
     /// the tail cursor if added to it.
     pub fn write_to<W: Write + ?Sized>(&mut self, wrt: &mut W) -> io::Result<usize> {
-        if self.len() == 0 {
+        if self.is_empty() {
             return Ok(0);
         }
 
@@ -1125,7 +1099,7 @@ impl Buffer {
     /// If the count returned by `wrt.write()` would cause the head cursor to overflow or pass
     /// the tail cursor if added to it.
     pub fn write_max<W: Write + ?Sized>(&mut self, mut max: usize, wrt: &mut W) -> io::Result<()> {
-        while self.len() > 0 && max > 0 {
+        while !self.is_empty() && max > 0 {
             let len = cmp::min(self.len(), max);
             let n = match wrt.write(&self.buf()[..len]) {
                 Ok(0) => {
@@ -1152,7 +1126,7 @@ impl Buffer {
     /// ### Panics
     /// If `self.write_to(wrt)` panics.
     pub fn write_all<W: Write + ?Sized>(&mut self, wrt: &mut W) -> io::Result<()> {
-        while self.len() > 0 {
+        while !self.is_empty() {
             match self.write_to(wrt) {
                 Ok(0) => {
                     return Err(io::Error::new(
@@ -1232,7 +1206,7 @@ pub struct Unbuffer<R> {
 impl<R> Unbuffer<R> {
     /// Returns `true` if the buffer still has some bytes left, `false` otherwise.
     pub fn is_buf_empty(&self) -> bool {
-        !self.buf.is_some()
+        self.buf.is_none()
     }
 
     /// Returns the number of bytes remaining in the buffer.
@@ -1256,7 +1230,7 @@ impl<R: Read> Read for Unbuffer<R> {
         if let Some(ref mut buf) = self.buf.as_mut() {
             let read = buf.copy_to_slice(out);
 
-            if out.len() != 0 && read != 0 {
+            if !out.is_empty() && read != 0 {
                 return Ok(read);
             }
         }
@@ -1302,8 +1276,9 @@ pub fn copy_buf<B: BufRead, W: Write>(b: &mut B, w: &mut W) -> io::Result<u64> {
     Ok(total_copied)
 }
 
+type DropHandler = Box<dyn Fn(&mut dyn Write, &mut Buffer, io::Error)>;
 thread_local!(
-    static DROP_ERR_HANDLER: RefCell<Box<Fn(&mut Write, &mut Buffer, io::Error)>>
+    static DROP_ERR_HANDLER: RefCell<DropHandler>
         = RefCell::new(Box::new(|_, _, _| ()))
 );
 
@@ -1317,13 +1292,7 @@ thread_local!(
 /// If called from within a handler previously provided to this function.
 pub fn set_drop_err_handler<F: 'static>(handler: F)
 where
-    F: Fn(&mut Write, &mut Buffer, io::Error),
+    F: Fn(&mut dyn Write, &mut Buffer, io::Error),
 {
     DROP_ERR_HANDLER.with(|deh| *deh.borrow_mut() = Box::new(handler))
-}
-
-#[cfg(not(feature = "nightly"))]
-fn init_buffer<R: Read + ?Sized>(_r: &R, buf: &mut [u8]) {
-    // we can't trust a reader without nightly
-    safemem::write_bytes(buf, 0);
 }

@@ -1,13 +1,3 @@
-// Copyright 2016-2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-use safemem;
-
 use std::cmp;
 
 use self::impl_::RawBuf;
@@ -114,7 +104,6 @@ impl StdBuf {
     }
 }
 
-#[cfg(not(feature = "nightly"))]
 mod impl_ {
     use std::mem;
 
@@ -159,7 +148,7 @@ mod impl_ {
 
         pub fn reserve_in_place(&mut self, _additional: usize) -> bool {
             // `Vec` does not support this
-            return false;
+            false
         }
 
         pub unsafe fn as_slice(&self) -> &[u8] {
@@ -172,54 +161,9 @@ mod impl_ {
     }
 }
 
-#[cfg(feature = "nightly")]
-mod impl_ {
-    extern crate alloc;
-
-    use self::alloc::raw_vec::RawVec;
-
-    use std::slice;
-
-    pub struct RawBuf {
-        buf: RawVec<u8>,
-    }
-
-    impl RawBuf {
-        pub fn with_capacity(capacity: usize) -> Self {
-            RawBuf {
-                buf: RawVec::with_capacity(capacity),
-            }
-        }
-
-        pub fn capacity(&self) -> usize {
-            self.buf.cap()
-        }
-
-        pub fn reserve(&mut self, additional: usize) -> bool {
-            let cap = self.capacity();
-            let old_ptr = self.buf.ptr();
-            self.buf.reserve_exact(cap, additional);
-            old_ptr != self.buf.ptr()
-        }
-
-        pub fn reserve_in_place(&mut self, additional: usize) -> bool {
-            let cap = self.capacity();
-            self.buf.reserve_in_place(cap, additional)
-        }
-
-        pub unsafe fn as_slice(&self) -> &[u8] {
-            slice::from_raw_parts(self.buf.ptr(), self.buf.cap())
-        }
-
-        pub unsafe fn as_mut_slice(&mut self) -> &mut [u8] {
-            slice::from_raw_parts_mut(self.buf.ptr(), self.buf.cap())
-        }
-    }
-}
-
 #[test]
 fn read_into_full() {
-    use Buffer;
+    use crate::Buffer;
 
     let mut buffer = Buffer::with_capacity(1);
 

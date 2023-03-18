@@ -1,21 +1,13 @@
 // Original implementation Copyright 2013 The Rust Project Developers <https://github.com/rust-lang>
-//
 // Original source file: https://github.com/rust-lang/rust/blob/master/src/libstd/io/buffered.rs
-//
 // Modifications copyright 2016-2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 
 //! These tests are copied from rust/src/libstd/io/buffered.rs
 //! They assume exact capacity allocation
 
+use crate::{BufReader, BufWriter, LineWriter};
 use std::io::prelude::*;
 use std::io::{self, SeekFrom};
-use {BufReader, BufWriter, LineWriter};
 
 /// A dummy reader intended at testing short-reads propagation.
 pub struct ShortReader {
@@ -76,7 +68,7 @@ fn test_buffered_reader_seek() {
 
     assert_eq!(reader.seek(SeekFrom::Start(3)).ok(), Some(3));
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
-    assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(3));
+    assert_eq!(reader.stream_position().ok(), Some(3));
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
     assert_eq!(reader.seek(SeekFrom::Current(1)).ok(), Some(4));
     assert_eq!(reader.fill_buf().ok(), Some(&[1, 2][..]));
@@ -132,7 +124,7 @@ fn test_buffered_reader_seek_underflow() {
     );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // seeking to 0 should empty the buffer.
-    assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
+    assert_eq!(reader.stream_position().ok(), Some(expected));
     assert_eq!(reader.get_ref().pos, expected);
 }
 
@@ -202,25 +194,6 @@ fn test_short_reads() {
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
 }
 
-#[cfg(feature = "nightly")]
-#[test]
-fn read_char_buffered() {
-    let buf = [195, 159];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
-}
-
-#[cfg(feature = "nightly")]
-#[test]
-fn test_chars() {
-    let buf = [195, 159, b'a'];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    let mut it = reader.chars();
-    assert_eq!(it.next().unwrap().unwrap(), 'ß');
-    assert_eq!(it.next().unwrap().unwrap(), 'a');
-    assert!(it.next().is_none());
-}
-
 // BufWriter tests
 #[test]
 fn test_buffered_writer() {
@@ -229,29 +202,29 @@ fn test_buffered_writer() {
 
     assert_eq!(writer.capacity(), 2);
 
-    writer.write(&[0, 1]).unwrap();
+    writer.write_all(&[0, 1]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1]);
 
-    writer.write(&[2]).unwrap();
+    writer.write_all(&[2]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1]);
 
-    writer.write(&[3]).unwrap();
+    writer.write_all(&[3]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1]);
 
     writer.flush().unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
-    writer.write(&[4]).unwrap();
-    writer.write(&[5]).unwrap();
+    writer.write_all(&[4]).unwrap();
+    writer.write_all(&[5]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
-    writer.write(&[6]).unwrap();
+    writer.write_all(&[6]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5]);
 
-    writer.write(&[7, 8]).unwrap();
+    writer.write_all(&[7, 8]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8]);
 
-    writer.write(&[9, 10, 11]).unwrap();
+    writer.write_all(&[9, 10, 11]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
     writer.flush().unwrap();
@@ -261,7 +234,7 @@ fn test_buffered_writer() {
 #[test]
 fn test_buffered_writer_inner_flushes() {
     let mut w = BufWriter::with_capacity(3, Vec::new());
-    w.write(&[0, 1]).unwrap();
+    w.write_all(&[0, 1]).unwrap();
     assert_eq!(*w.get_ref(), []);
     let w = w.into_inner().unwrap();
     assert_eq!(w, [0, 1]);
@@ -272,7 +245,7 @@ fn test_buffered_writer_seek() {
     let mut w = BufWriter::with_capacity(3, io::Cursor::new(Vec::new()));
     w.write_all(&[0, 1, 2, 3, 4, 5]).unwrap();
     w.write_all(&[6, 7]).unwrap();
-    assert_eq!(w.seek(SeekFrom::Current(0)).ok(), Some(8));
+    assert_eq!(w.stream_position().ok(), Some(8));
     assert_eq!(&w.get_ref().get_ref()[..], &[0, 1, 2, 3, 4, 5, 6, 7][..]);
     assert_eq!(w.seek(SeekFrom::Start(2)).ok(), Some(2));
     w.write_all(&[8, 9]).unwrap();
@@ -285,17 +258,17 @@ fn test_buffered_writer_seek() {
 #[test]
 fn test_line_buffer() {
     let mut writer = LineWriter::new(Vec::new());
-    writer.write(&[0]).unwrap();
+    writer.write_all(&[0]).unwrap();
     assert_eq!(*writer.get_ref(), []);
-    writer.write(&[1]).unwrap();
+    writer.write_all(&[1]).unwrap();
     assert_eq!(*writer.get_ref(), []);
     writer.flush().unwrap();
     assert_eq!(*writer.get_ref(), [0, 1]);
-    writer.write(&[0, b'\n', 1, b'\n', 2]).unwrap();
+    writer.write_all(&[0, b'\n', 1, b'\n', 2]).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 0, b'\n', 1, b'\n']);
     writer.flush().unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 0, b'\n', 1, b'\n', 2]);
-    writer.write(&[3, b'\n']).unwrap();
+    writer.write_all(&[3, b'\n']).unwrap();
     assert_eq!(*writer.get_ref(), [0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n']);
 }
 

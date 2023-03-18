@@ -1,4 +1,4 @@
-# buffer\_re(a)dux 
+# buffer-re(a)dux 
 
 [![Crates.io](https://img.shields.io/crates/v/buffer-redux.svg)](https://crates.io/crates/buffer-redux)
 [![Crates.io](https://img.shields.io/crates/d/buffer-redux.svg)](https://crates.io/crates/buffer-redux)

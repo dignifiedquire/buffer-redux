@@ -1,10 +1,3 @@
-// Copyright 2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms
 //! Move-free buffer and reader utilizing the [`slice-deque`] crate.
 //!
 //! These types are only available on target platforms with virtual memory support,
@@ -69,7 +62,7 @@ impl SliceDequeBuf {
         let offset = cmp::min(add, self.usable_space()) as isize;
 
         if offset < 0 {
-            panic!("BufImpl.bytes_written() arg overflowed isize: {:x}", add);
+            panic!("BufImpl.bytes_written() arg overflowed isize: {add:x}");
         }
 
         self.deque.move_tail(offset);
@@ -80,7 +73,7 @@ impl SliceDequeBuf {
             let offset = cmp::min(amt, self.len()) as isize;
 
             if offset < 0 {
-                panic!("BufImpl.consume() arg overflowed isize: {:x}", amt)
+                panic!("BufImpl.consume() arg overflowed isize: {amt:x}")
             }
 
             self.deque.move_head(offset);
