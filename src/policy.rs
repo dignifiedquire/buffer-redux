@@ -235,7 +235,7 @@ pub struct FlushOn(pub u8);
 impl WriterPolicy for FlushOn {
     fn after_write(&mut self, buf: &Buffer) -> FlushAmt {
         // include the delimiter in the flush
-        FlushAmt(::memchr::memrchr(self.0, buf.buf()).map_or(0, |n| n + 1))
+        FlushAmt(memchr::memrchr(self.0, buf.buf()).map_or(0, |n| n + 1))
     }
 }
 
@@ -247,7 +247,7 @@ pub struct FlushOnNewline;
 
 impl WriterPolicy for FlushOnNewline {
     fn after_write(&mut self, buf: &Buffer) -> FlushAmt {
-        FlushAmt(::memchr::memrchr(b'\n', buf.buf()).map_or(0, |n| n + 1))
+        FlushAmt(memchr::memrchr(b'\n', buf.buf()).map_or(0, |n| n + 1))
     }
 }
 

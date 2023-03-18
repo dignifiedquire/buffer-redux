@@ -29,9 +29,12 @@ use std_tests::ShortReader;
 macro_rules! assert_capacity {
     ($buf:expr, $cap:expr) => {
         let cap = $buf.capacity();
-        if cfg!(windows) {
+        if cfg!(target_os = "windows") {
             // Windows' minimum allocation size is 64K
             assert_eq!(cap, ::std::cmp::max(64 * 1024, cap));
+        } else if cfg!(target_os = "macos") {
+            // Macos' minimum allocation size is 16K
+            assert_eq!(cap, ::std::cmp::max(16 * 1024, cap));
         } else {
             assert_eq!(cap, $cap);
         }
@@ -222,25 +225,6 @@ fn test_short_reads() {
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
 }
 
-#[cfg(feature = "nightly")]
-#[test]
-fn read_char_buffered() {
-    let buf = [195, 159];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
-}
-
-#[cfg(feature = "nightly")]
-#[test]
-fn test_chars() {
-    let buf = [195, 159, b'a'];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    let mut it = reader.chars();
-    assert_eq!(it.next().unwrap().unwrap(), 'ß');
-    assert_eq!(it.next().unwrap().unwrap(), 'a');
-    assert!(it.next().is_none());
-}
-
 /// Test that the ringbuffer wraps as intended
 #[test]
 fn test_mirror_boundary() {
@@ -291,7 +275,7 @@ fn issue_8() {
         rdr.consume(4000);
         // rdr.make_room(); // (only necessary with 'standard' reader)
 
-        println!("{}", n);
+        println!("{n}");
     }
 }
 

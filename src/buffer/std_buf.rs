@@ -6,8 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use safemem;
-
 use std::cmp;
 
 use self::impl_::RawBuf;
@@ -114,7 +112,6 @@ impl StdBuf {
     }
 }
 
-#[cfg(not(feature = "nightly"))]
 mod impl_ {
     use std::mem;
 
@@ -168,51 +165,6 @@ mod impl_ {
 
         pub unsafe fn as_mut_slice(&mut self) -> &mut [u8] {
             &mut self.buf
-        }
-    }
-}
-
-#[cfg(feature = "nightly")]
-mod impl_ {
-    extern crate alloc;
-
-    use self::alloc::raw_vec::RawVec;
-
-    use std::slice;
-
-    pub struct RawBuf {
-        buf: RawVec<u8>,
-    }
-
-    impl RawBuf {
-        pub fn with_capacity(capacity: usize) -> Self {
-            RawBuf {
-                buf: RawVec::with_capacity(capacity),
-            }
-        }
-
-        pub fn capacity(&self) -> usize {
-            self.buf.cap()
-        }
-
-        pub fn reserve(&mut self, additional: usize) -> bool {
-            let cap = self.capacity();
-            let old_ptr = self.buf.ptr();
-            self.buf.reserve_exact(cap, additional);
-            old_ptr != self.buf.ptr()
-        }
-
-        pub fn reserve_in_place(&mut self, additional: usize) -> bool {
-            let cap = self.capacity();
-            self.buf.reserve_in_place(cap, additional)
-        }
-
-        pub unsafe fn as_slice(&self) -> &[u8] {
-            slice::from_raw_parts(self.buf.ptr(), self.buf.cap())
-        }
-
-        pub unsafe fn as_mut_slice(&mut self) -> &mut [u8] {
-            slice::from_raw_parts_mut(self.buf.ptr(), self.buf.cap())
         }
     }
 }

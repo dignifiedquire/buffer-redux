@@ -202,25 +202,6 @@ fn test_short_reads() {
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
 }
 
-#[cfg(feature = "nightly")]
-#[test]
-fn read_char_buffered() {
-    let buf = [195, 159];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
-}
-
-#[cfg(feature = "nightly")]
-#[test]
-fn test_chars() {
-    let buf = [195, 159, b'a'];
-    let reader = BufReader::with_capacity(1, &buf[..]);
-    let mut it = reader.chars();
-    assert_eq!(it.next().unwrap().unwrap(), 'ß');
-    assert_eq!(it.next().unwrap().unwrap(), 'a');
-    assert!(it.next().is_none());
-}
-
 // BufWriter tests
 #[test]
 fn test_buffered_writer() {

@@ -135,12 +135,15 @@
 //!
 //! [ringbuf-wikipedia]: https://en.wikipedia.org/wiki/Circular_buffer#Optimization
 #![warn(missing_docs)]
-#![cfg_attr(feature = "nightly", feature(alloc, read_initializer, specialization))]
-#![cfg_attr(all(test, feature = "nightly"), feature(io, test))]
 
-extern crate memchr;
+// std::io's tests require exact allocation which slice_deque cannot provide
+mod buffer;
+#[cfg(all(test, feature = "slice-deque"))]
+mod ringbuf_tests;
+#[cfg(test)]
+mod std_tests;
 
-extern crate safemem;
+pub mod policy;
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -149,29 +152,8 @@ use std::io::SeekFrom;
 use std::mem::ManuallyDrop;
 use std::{cmp, error, fmt, io, ptr};
 
-#[cfg(all(feature = "nightly", test))]
-mod benches;
-
-// std::io's tests require exact allocation which slice_deque cannot provide
-#[cfg(test)]
-mod std_tests;
-
-#[cfg(all(test, feature = "slice-deque"))]
-mod ringbuf_tests;
-
-#[cfg(feature = "nightly")]
-mod nightly;
-
-#[cfg(feature = "nightly")]
-use nightly::init_buffer;
-
-mod buffer;
-
-use buffer::BufImpl;
-
-pub mod policy;
-
 use self::policy::{FlushOnNewline, ReaderPolicy, StdPolicy, WriterPolicy};
+use buffer::BufImpl;
 
 const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
@@ -1051,9 +1033,6 @@ impl Buffer {
     ///
     /// If there is no more room at the head of the buffer, this will return `Ok(0)`.
     ///
-    /// Uses `Read::initializer()` to initialize the buffer if the `nightly`
-    /// feature is enabled, otherwise the buffer is zeroed if it has never been written.
-    ///
     /// ### Panics
     /// If the returned count from `rdr.read()` overflows the tail cursor of this buffer.
     pub fn read_from<R: Read + ?Sized>(&mut self, rdr: &mut R) -> io::Result<usize> {
@@ -1065,7 +1044,7 @@ impl Buffer {
         if self.zeroed < cap {
             unsafe {
                 let buf = self.buf.write_buf();
-                init_buffer(&rdr, buf);
+                safemem::write_bytes(buf, 0);
             }
 
             self.zeroed = cap;
@@ -1323,10 +1302,4 @@ where
     F: Fn(&mut dyn Write, &mut Buffer, io::Error),
 {
     DROP_ERR_HANDLER.with(|deh| *deh.borrow_mut() = Box::new(handler))
-}
-
-#[cfg(not(feature = "nightly"))]
-fn init_buffer<R: Read + ?Sized>(_r: &R, buf: &mut [u8]) {
-    // we can't trust a reader without nightly
-    safemem::write_bytes(buf, 0);
 }
