@@ -31,10 +31,10 @@ macro_rules! assert_capacity {
         let cap = $buf.capacity();
         if cfg!(target_os = "windows") {
             // Windows' minimum allocation size is 64K
-            assert_eq!(cap, ::std::cmp::max(64 * 1024, cap));
+            assert_eq!(cap, ::std::cmp::max(64 * 1024, $cap));
         } else if cfg!(target_os = "macos") {
-            // Macos' minimum allocation size is 16K
-            assert_eq!(cap, ::std::cmp::max(16 * 1024, cap));
+            // Macos' minimum allocation size is sometimes? 16K
+            assert!(cap == $cap || cap == ::std::cmp::max(16 * 1024, $cap));
         } else {
             assert_eq!(cap, $cap);
         }
