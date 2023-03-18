@@ -95,7 +95,7 @@ fn test_buffered_reader_seek() {
 
     assert_eq!(reader.seek(SeekFrom::Start(3)).ok(), Some(3));
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-    assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(3));
+    assert_eq!(reader.stream_position().ok(), Some(3));
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
     assert_eq!(reader.seek(SeekFrom::Current(1)).ok(), Some(4));
     assert_eq!(reader.fill_buf().ok(), Some(&[1, 2, 3, 4][..]));
@@ -152,7 +152,7 @@ fn test_buffered_reader_seek_underflow() {
     );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // seeking to 0 should empty the buffer.
-    assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
+    assert_eq!(reader.stream_position().ok(), Some(expected));
     assert_eq!(reader.get_ref().pos, expected);
 }
 

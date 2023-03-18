@@ -22,7 +22,7 @@ pub struct DoRead(pub bool);
 /// Shorthand for `return DoRead(bool)` or `return DoRead(true)` (empty invocation)
 #[macro_export]
 macro_rules! do_read (
-    ($val:expr) => ( return $crate::policy::DoRead($val); );
+    ($val:expr) => ( return $crate::policy::DoRead($val) );
     () => ( do_read!(true); )
 );
 
@@ -56,7 +56,7 @@ pub trait ReaderPolicy {
     /// read matches or exceeds its capacity) or if `BufReader::read_into_buf()` was called to force
     /// a read into the buffer manually, this method will not be called.
     fn before_read(&mut self, buffer: &mut Buffer) -> DoRead {
-        DoRead(buffer.len() == 0)
+        DoRead(buffer.is_empty())
     }
 
     /// Called after bytes are consumed from the buffer.
