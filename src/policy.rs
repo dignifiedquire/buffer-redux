@@ -1,10 +1,3 @@
-// Copyright 2016-2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
 //! Types which can be used to tune the behavior of `BufReader` and `BufWriter`.
 //!
 //! Some simple policies are provided for your convenience. You may prefer to create your own

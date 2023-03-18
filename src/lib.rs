@@ -1,14 +1,7 @@
 // Original implementation Copyright 2013 The Rust Project Developers <https://github.com/rust-lang>
-//
 // Original source file: https://github.com/rust-lang/rust/blob/master/src/libstd/io/buffered.P
-//
 // Additions copyright 2016-2018 Austin Bonander <austin.bonander@gmail.com>
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+
 //! Drop-in replacements for buffered I/O types in `std::io`.
 //!
 //! These replacements retain the method names/signatures and implemented traits of their stdlib
