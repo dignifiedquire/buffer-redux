@@ -285,6 +285,7 @@ impl<R, P> BufReader<R, P> {
     /// Get the section of the buffer containing valid data; may be empty.
     ///
     /// Call `.consume()` to remove bytes from the beginning of this section.
+    #[inline]
     pub fn buffer(&self) -> &[u8] {
         self.buf.buf()
     }
@@ -1011,6 +1012,7 @@ impl Buffer {
     /// Get an immutable slice of the available bytes in this buffer.
     ///
     /// Call `.consume()` to remove bytes from the beginning of this slice.
+    #[inline]
     pub fn buf(&self) -> &[u8] {
         self.buf.buf()
     }
@@ -1215,6 +1217,7 @@ impl<R> Unbuffer<R> {
     }
 
     /// Get a slice over the available bytes in the buffer.
+    #[inline]
     pub fn buf(&self) -> &[u8] {
         self.buf.as_ref().map_or(&[], Buffer::buf)
     }

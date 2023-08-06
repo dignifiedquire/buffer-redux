@@ -46,6 +46,7 @@ impl SliceDequeBuf {
     /// This method is a no-op.
     pub fn make_room(&mut self) {}
 
+    #[inline]
     pub fn buf(&self) -> &[u8] {
         &self.deque
     }

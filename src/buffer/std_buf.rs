@@ -72,6 +72,7 @@ impl StdBuf {
         self.end = len;
     }
 
+    #[inline]
     pub fn buf(&self) -> &[u8] {
         unsafe { &self.buf.as_slice()[self.pos..self.end] }
     }
@@ -151,6 +152,7 @@ mod impl_ {
             false
         }
 
+        #[inline]
         pub unsafe fn as_slice(&self) -> &[u8] {
             &self.buf
         }
