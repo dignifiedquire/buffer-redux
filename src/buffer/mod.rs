@@ -17,7 +17,9 @@ pub enum BufImpl {
 }
 
 macro_rules! forward_method {
-    (pub fn $fnname:ident(&self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+    ($(#[$m:meta])*
+     pub fn $fnname:ident(&self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+        $(#[$m])*
         pub fn $fnname(&self $($args)*) $(-> $ret)* {
             match *self {
                 BufImpl::Std(ref buf) => buf.$fnname($($passargs)*),
@@ -27,7 +29,9 @@ macro_rules! forward_method {
         }
     };
 
-    (pub fn $fnname:ident(&mut self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+    ($(#[$m:meta])*
+     pub fn $fnname:ident(&mut self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+        $(#[$m])*
         pub fn $fnname(&mut self $($args)*) $(-> $ret)* {
             match *self {
                 BufImpl::Std(ref mut buf) => buf.$fnname($($passargs)*),
@@ -37,7 +41,9 @@ macro_rules! forward_method {
         }
     };
 
-    (pub unsafe fn $fnname:ident(&self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+    ($(#[$m:meta])*
+     pub unsafe fn $fnname:ident(&self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+        $(#[$m])*
         pub unsafe fn $fnname(&self $($args)*) $(-> $ret)* {
             match *self {
                 BufImpl::Std(ref buf) => buf.$fnname($($passargs)*),
@@ -47,7 +53,9 @@ macro_rules! forward_method {
         }
     };
 
-    (pub unsafe fn $fnname:ident(&mut self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+    ($(#[$m:meta])*
+     pub unsafe fn $fnname:ident(&mut self $($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*) => {
+        $(#[$m])*
         pub unsafe fn $fnname(&mut self $($args)*) $(-> $ret)* {
             match *self {
                 BufImpl::Std(ref mut buf) => buf.$fnname($($passargs)*),
@@ -59,9 +67,10 @@ macro_rules! forward_method {
 }
 
 macro_rules! forward_methods {
-    ($($($qualifiers:ident)+ ($($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*);+;) => (
+    ($($(#[$m:meta])*
+     $($qualifiers:ident)+ ($($args:tt)*) [$($passargs:tt)*] $(-> $ret:ty)*);+;) => (
         $(forward_method! {
-            $($qualifiers)+ ($($args)*) [$($passargs)*] $(-> $ret)*
+            $(#[$m])* $($qualifiers)+ ($($args)*) [$($passargs)*] $(-> $ret)*
         })*
     )
 }
@@ -95,6 +104,7 @@ impl BufImpl {
 
         pub fn make_room(&mut self)[];
 
+        #[inline]
         pub fn buf(&self)[] -> &[u8];
 
         pub fn buf_mut(&mut self)[] -> &mut [u8];
