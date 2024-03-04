@@ -1037,7 +1037,7 @@ impl Buffer {
         if self.zeroed < cap {
             unsafe {
                 let buf = self.buf.write_buf();
-                safemem::write_bytes(buf, 0);
+                buf.fill(0);
             }
 
             self.zeroed = cap;

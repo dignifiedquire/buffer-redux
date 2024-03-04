@@ -66,7 +66,8 @@ impl StdBuf {
         // simply move the bytes down to the beginning
         let len = self.len();
 
-        safemem::copy_over(unsafe { self.buf.as_mut_slice() }, self.pos, 0, len);
+        let buf_slice = unsafe { self.buf.as_mut_slice() };
+        buf_slice.copy_within(self.pos..self.pos+len, 0);
 
         self.pos = 0;
         self.end = len;
