@@ -67,7 +67,7 @@ impl StdBuf {
         let len = self.len();
 
         let buf_slice = unsafe { self.buf.as_mut_slice() };
-        buf_slice.copy_within(self.pos..self.pos+len, 0);
+        buf_slice.copy_within(self.pos..self.pos + len, 0);
 
         self.pos = 0;
         self.end = len;
