@@ -143,6 +143,7 @@ use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::mem::ManuallyDrop;
+use std::mem::MaybeUninit;
 use std::{cmp, error, fmt, io, ptr};
 
 use self::policy::{FlushOnNewline, ReaderPolicy, StdPolicy, WriterPolicy};
@@ -1039,7 +1040,10 @@ impl Buffer {
         if self.zeroed < cap {
             unsafe {
                 let buf = self.buf.write_buf();
-                buf.fill(0);
+                // TODO: use MaybeUninit::fill once stabilized
+                for el in buf {
+                    el.write(0);
+                }
             }
 
             self.zeroed = cap;
@@ -1047,6 +1051,10 @@ impl Buffer {
 
         let read = {
             let buf = unsafe { self.buf.write_buf() };
+            // SAFETY: everything upto `cap` was zeroed above
+            // TODO: use MaybeUninit::slice_assume_init_mut once stabilized
+            let buf = unsafe { &mut *(buf as *mut [MaybeUninit<u8>] as *mut [u8]) };
+            // TODO: use BorrowedCursor once stabilized
             rdr.read(buf)?
         };
 
@@ -1066,7 +1074,13 @@ impl Buffer {
         let len = unsafe {
             let buf = self.buf.write_buf();
             let len = cmp::min(buf.len(), src.len());
-            buf[..len].copy_from_slice(&src[..len]);
+
+            // TODO: use MaybeUninit::copy_from_slice once stabilized
+
+            // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+            let uninit_src: &[MaybeUninit<u8>] = std::mem::transmute(src);
+            buf[..len].copy_from_slice(&uninit_src[..len]);
+
             len
         };
 
@@ -1172,7 +1186,13 @@ impl Buffer {
         }
 
         unsafe {
-            self.buf.write_buf()[..s_len].copy_from_slice(bytes);
+            // TODO: use MaybeUninit::copy_from_slice once stabilized
+
+            // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+            let uninit_src: &[MaybeUninit<u8>] = std::mem::transmute(bytes);
+            let buf = self.buf.write_buf();
+            buf[..s_len].copy_from_slice(uninit_src);
+
             self.buf.bytes_written(s_len);
         }
     }

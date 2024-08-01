@@ -1,13 +1,12 @@
-//! Move-free buffer and reader utilizing the [`slice-deque`] crate.
+//! Move-free buffer and reader utilizing the [`slice-ring-buffer`] crate.
 //!
 //! These types are only available on target platforms with virtual memory support,
 //! namely Windows, OS X and Linux.
 //!
-//! [`slice-deque`]: https://crates.io/crates/slice-deque
-extern crate slice_deque;
-use self::slice_deque::SliceDeque;
+//! [`slice-ring-buffer`]: https://crates.io/crates/slice-ring-buffer
+use slice_ring_buffer::SliceRingBuffer as SliceDeque;
 
-use std::cmp;
+use std::{cmp, mem::MaybeUninit};
 
 pub struct SliceDequeBuf {
     deque: SliceDeque<u8>,
@@ -55,7 +54,7 @@ impl SliceDequeBuf {
         &mut self.deque
     }
 
-    pub unsafe fn write_buf(&mut self) -> &mut [u8] {
+    pub unsafe fn write_buf(&mut self) -> &mut [MaybeUninit<u8>] {
         self.deque.tail_head_slice()
     }
 

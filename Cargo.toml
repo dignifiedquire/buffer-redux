@@ -14,9 +14,10 @@ edition = "2021"
 memchr = "2.0"
 
 # `slice_deque` is only supported on platforms with virtual memory
-[target.'cfg(any(unix, windows))'.dependencies.slice-deque]
+[target.'cfg(any(unix, windows))'.dependencies.slice-ring-buffer]
 version = "0.3"
 optional = true
 
 [features]
 default = ["slice-deque"]
+slice-deque = ["dep:slice-ring-buffer"]
