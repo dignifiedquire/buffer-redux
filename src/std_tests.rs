@@ -102,7 +102,7 @@ fn test_buffered_reader_seek_underflow() {
                     self.pos = self.pos.wrapping_add(n as u64);
                 }
                 SeekFrom::End(n) => {
-                    self.pos = u64::max_value().wrapping_add(n as u64);
+                    self.pos = u64::MAX.wrapping_add(n as u64);
                 }
             }
             Ok(self.pos)
@@ -111,15 +111,12 @@ fn test_buffered_reader_seek_underflow() {
 
     let mut reader = BufReader::with_capacity(5, PositionReader { pos: 0 });
     assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
-    assert_eq!(
-        reader.seek(SeekFrom::End(-5)).ok(),
-        Some(u64::max_value() - 5)
-    );
+    assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::MAX - 5));
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
     // the following seek will require two underlying seeks
     let expected = 9223372036854775802;
     assert_eq!(
-        reader.seek(SeekFrom::Current(i64::min_value())).ok(),
+        reader.seek(SeekFrom::Current(i64::MIN)).ok(),
         Some(expected)
     );
     assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
