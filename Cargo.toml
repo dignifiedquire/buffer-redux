@@ -19,4 +19,5 @@ version = "0.3"
 optional = true
 
 [features]
-default = ["slice-ring-buffer"]
+default = ["slice-deque"]
+slice-deque = ["dep:slice-ring-buffer"]

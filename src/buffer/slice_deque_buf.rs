@@ -4,13 +4,14 @@
 //! namely Windows, OS X and Linux.
 //!
 //! [`slice-deque`]: https://crates.io/crates/slice-deque
-extern crate slice_deque;
-use self::slice_deque::SliceDeque;
+extern crate slice_ring_buffer;
+use self::slice_ring_buffer::SliceRingBuffer;
 
 use std::cmp;
+use std::mem::MaybeUninit;
 
 pub struct SliceDequeBuf {
-    deque: SliceDeque<u8>,
+    deque: SliceRingBuffer<u8>,
 }
 
 /// Move-free buffer utilizing the [`slice-deque`] crate.
@@ -22,7 +23,7 @@ pub struct SliceDequeBuf {
 impl SliceDequeBuf {
     pub fn with_capacity(cap: usize) -> Self {
         SliceDequeBuf {
-            deque: SliceDeque::with_capacity(cap),
+            deque: SliceRingBuffer::with_capacity(cap),
         }
     }
 
@@ -55,7 +56,7 @@ impl SliceDequeBuf {
         &mut self.deque
     }
 
-    pub unsafe fn write_buf(&mut self) -> &mut [u8] {
+    pub unsafe fn write_buf(&mut self) -> &mut [MaybeUninit<u8>] {
         self.deque.tail_head_slice()
     }
 
