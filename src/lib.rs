@@ -48,12 +48,12 @@
 //! [`policy` module]:
 //!
 //! * Refine `BufReader`'s behavior by implementing the [`ReaderPolicy` trait] or use
-//! an existing implementation like [`MinBuffered`] to ensure the buffer always contains
-//! a minimum number of bytes (until the underlying reader is empty).
+//!   an existing implementation like [`MinBuffered`] to ensure the buffer always contains
+//!   a minimum number of bytes (until the underlying reader is empty).
 //!
 //! * Refine `BufWriter`'s behavior by implementing the [`WriterPolicy` trait]
-//! or use an existing implementation like [`FlushOn`] to flush when a particular byte
-//! appears in the buffer (used to implement [`LineWriter`]).
+//!   or use an existing implementation like [`FlushOn`] to flush when a particular byte
+//!   appears in the buffer (used to implement [`LineWriter`]).
 //!
 //! [`policy` module]: policy
 //! [`ReaderPolicy` trait]: policy::ReaderPolicy
@@ -112,19 +112,19 @@
 //! However, this has some caveats:
 //!
 //! * It is only available on target platforms with virtual memory support, namely fully fledged
-//! OSes such as Windows and Unix-derivative platforms like Linux, OS X, BSD variants, etc.
+//!   OSes such as Windows and Unix-derivative platforms like Linux, OS X, BSD variants, etc.
 //!
 //! * The default capacity varies based on platform, and custom capacities are rounded up to a
-//! multiple of their minimum size, typically the page size of the platform.
-//! Windows' minimum size is comparably quite large (**64 KiB**) due to some legacy reasons,
-//! so this may be less optimal than the default capacity for a normal buffer (8 KiB) for some
-//! use-cases.
+//!   multiple of their minimum size, typically the page size of the platform.
+//!   Windows' minimum size is comparably quite large (**64 KiB**) due to some legacy reasons,
+//!   so this may be less optimal than the default capacity for a normal buffer (8 KiB) for some
+//!   use-cases.
 //!
 //! * Due to the nature of the virtual-memory trick, the virtual address space the buffer
-//! allocates will be double its capacity. This means that your program will *appear* to use more
-//! memory than it would if it was using a normal buffer of the same capacity. The physical memory
-//! usage will be the same in both cases, but if address space is at a premium in your application
-//! (32-bit targets) then this may be a concern.
+//!   allocates will be double its capacity. This means that your program will *appear* to use more
+//!   memory than it would if it was using a normal buffer of the same capacity. The physical memory
+//!   usage will be the same in both cases, but if address space is at a premium in your application
+//!   (32-bit targets) then this may be a concern.
 //!
 //! [ringbuf-wikipedia]: https://en.wikipedia.org/wiki/Circular_buffer#Optimization
 #![warn(missing_docs)]
@@ -143,6 +143,7 @@ use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::mem::ManuallyDrop;
+use std::mem::MaybeUninit;
 use std::{cmp, error, fmt, io, ptr};
 
 use self::policy::{FlushOnNewline, ReaderPolicy, StdPolicy, WriterPolicy};
@@ -906,7 +907,7 @@ impl Buffer {
     /// The default capacity varies based on the target platform:
     ///
     /// * Unix-derivative platforms; Linux, OS X, BSDs, etc: **8KiB** (the default buffer size for
-    /// `std::io` buffered types)
+    ///   `std::io` buffered types)
     /// * Windows: **64KiB** because of legacy reasons, of course (see below)
     ///
     /// Only available on platforms with virtual memory support and with the `slice-deque` feature
@@ -925,10 +926,10 @@ impl Buffer {
     /// The capacity will be rounded up to the minimum size for the current target:
     ///
     /// * Unix-derivative platforms; Linux, OS X, BSDs, etc: the next multiple of the page size
-    /// (typically 4KiB but can vary based on system configuration)
+    ///   (typically 4KiB but can vary based on system configuration)
     /// * Windows: the next muliple of **64KiB**; see [this Microsoft dev blog post][Win-why-64k]
-    /// for why it's 64KiB and not the page size (TL;DR: Alpha AXP needs it and it's applied on
-    /// all targets for consistency/portability)
+    ///   for why it's 64KiB and not the page size (TL;DR: Alpha AXP needs it and it's applied on
+    ///   all targets for consistency/portability)
     ///
     /// [Win-why-64k]: https://blogs.msdn.microsoft.com/oldnewthing/20031008-00/?p=42223
     ///
@@ -1039,7 +1040,10 @@ impl Buffer {
         if self.zeroed < cap {
             unsafe {
                 let buf = self.buf.write_buf();
-                buf.fill(0);
+                // TODO: use MaybeUninit::fill once stabilized
+                for el in buf {
+                    el.write(0);
+                }
             }
 
             self.zeroed = cap;
@@ -1047,6 +1051,10 @@ impl Buffer {
 
         let read = {
             let buf = unsafe { self.buf.write_buf() };
+            // SAFETY: everything upto `cap` was zeroed above
+            // TODO: use MaybeUninit::slice_assume_init_mut once stabilized
+            let buf = unsafe { &mut *(buf as *mut [MaybeUninit<u8>] as *mut [u8]) };
+            // TODO: use BorrowedCursor once stabilized
             rdr.read(buf)?
         };
 
@@ -1066,7 +1074,13 @@ impl Buffer {
         let len = unsafe {
             let buf = self.buf.write_buf();
             let len = cmp::min(buf.len(), src.len());
-            buf[..len].copy_from_slice(&src[..len]);
+
+            // TODO: use MaybeUninit::copy_from_slice once stabilized
+
+            // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+            let uninit_src: &[MaybeUninit<u8>] = std::mem::transmute(src);
+            buf[..len].copy_from_slice(&uninit_src[..len]);
+
             len
         };
 
@@ -1172,7 +1186,13 @@ impl Buffer {
         }
 
         unsafe {
-            self.buf.write_buf()[..s_len].copy_from_slice(bytes);
+            // TODO: use MaybeUninit::copy_from_slice once stabilized
+
+            // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+            let uninit_src: &[MaybeUninit<u8>] = std::mem::transmute(bytes);
+            let buf = self.buf.write_buf();
+            buf[..s_len].copy_from_slice(uninit_src);
+
             self.buf.bytes_written(s_len);
         }
     }
@@ -1293,9 +1313,9 @@ thread_local!(
 ///
 /// ### Panics
 /// If called from within a handler previously provided to this function.
-pub fn set_drop_err_handler<F: 'static>(handler: F)
+pub fn set_drop_err_handler<F>(handler: F)
 where
-    F: Fn(&mut dyn Write, &mut Buffer, io::Error),
+    F: 'static + Fn(&mut dyn Write, &mut Buffer, io::Error),
 {
     DROP_ERR_HANDLER.with(|deh| *deh.borrow_mut() = Box::new(handler))
 }

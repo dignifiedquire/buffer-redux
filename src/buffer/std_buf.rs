@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{cmp, mem::MaybeUninit};
 
 use self::impl_::RawBuf;
 
@@ -82,8 +82,10 @@ impl StdBuf {
         unsafe { &mut self.buf.as_mut_slice()[self.pos..self.end] }
     }
 
-    pub unsafe fn write_buf(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut_slice()[self.end..]
+    pub unsafe fn write_buf(&mut self) -> &mut [MaybeUninit<u8>] {
+        let slice: &mut [u8] = &mut self.buf.as_mut_slice()[self.end..];
+        // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+        std::mem::transmute(slice)
     }
 
     pub unsafe fn bytes_written(&mut self, amt: usize) {

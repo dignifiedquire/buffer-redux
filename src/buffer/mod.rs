@@ -5,6 +5,8 @@ mod std_buf;
 #[cfg(feature = "slice-deque")]
 mod slice_deque_buf;
 
+use std::mem::MaybeUninit;
+
 use self::std_buf::StdBuf;
 
 #[cfg(feature = "slice-deque")]
@@ -109,7 +111,7 @@ impl BufImpl {
 
         pub fn buf_mut(&mut self)[] -> &mut [u8];
 
-        pub unsafe fn write_buf(&mut self)[] -> &mut [u8];
+        pub unsafe fn write_buf(&mut self)[] -> &mut [MaybeUninit<u8>];
 
         pub unsafe fn bytes_written(&mut self, add: usize)[add];
 
