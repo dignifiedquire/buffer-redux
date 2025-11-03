@@ -386,7 +386,7 @@ mod test {
             &[1, 2, 3, b'\n', 4, 5, 6, 7, 8, 9, b'\n']
         );
 
-        assert_eq!(writer.write(&[b'\n']).unwrap(), 1);
+        assert_eq!(writer.write(b"\n").unwrap(), 1);
         assert_eq!(
             *writer.get_ref(),
             &[1, 2, 3, b'\n', 4, 5, 6, 7, 8, 9, b'\n', 11, 12, b'\n']
