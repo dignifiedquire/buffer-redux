@@ -1,6 +1,6 @@
 [package]
 name = "buffer-redux"
-version = "1.0.2"
+version = "1.1.0"
 authors = ["dignifiedquire <me@dignifiedquire.com>", "Austin Bonander <austin.bonander@gmail.com>"]
 description = "Drop-in replacements for buffered I/O in `std::io` with extra features."
 keywords = ["io", "buffer", "buffered"]
