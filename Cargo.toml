@@ -9,6 +9,7 @@ repository = "https://github.com/dignifiedquire/buffer-redux"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2021"
+rust-version = "1.71"
 
 [dependencies]
 memchr = "2.0"
