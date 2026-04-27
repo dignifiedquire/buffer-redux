@@ -102,35 +102,11 @@ reader.consume(5);
 assert_eq!(reader.fill_buf().unwrap(), &[13, 14, 15]);
 ```
 
-### Note: Making Room / Ringbuffers / `slice-deque` Feature
+### Note: Making Room
 With policies like `MinBuffered`, that will read into the buffer and consume bytes from it without completely 
 emptying it, normal buffer handling can run out of room to read/write into as all the free space is at the
 head of the buffer. If the amount of data in the buffer is small, you can call `.make_room()` on the buffered
 type to make more room for reading. `MinBuffered` will do this automatically.
-
-Instead of this, with the `slice-deque` feature, you can instead have your buffered type allocate a *ringbuffer*,
-simply by using the `::new_ringbuf()` or `::with_capacity_ringbuf()` constructors instead of 
-`::new()` or `with_capacity()`, respectively. With a ringbuffer, consuming/flushing bytes 
-from a buffer instantly makes room for more reading/writing at the end.
-However, this has some caveats:
-
-* It is only available on target platforms with virtual memory support, namely fully fledged
-OSes such as Windows and Unix-derivative platforms like Linux, OS X, BSD variants, etc.
-
-* The default capacity varies based on platform, and custom capacities are rounded up to a
-multiple of their minimum size, typically the page size of the platform.
-Windows' minimum size is comparably quite large (**64 KiB**) due to some legacy reasons,
-so this may be less optimal than the default capacity for a normal buffer (8 KiB) for some
-use-cases.
-
-* Due to the nature of the virtual-memory trick, the virtual address space the buffer
-allocates will be double its capacity. This means that your program will *appear* to use more
-memory than it would if it was using a normal buffer of the same capacity. The physical memory
-usage will be the same in both cases, but if address space is at a premium in your application
-(32-bit targets) then this may be a concern.
-
-It is up to you to decide if the benefits outweigh the costs. With a policy like `MinBuffered`,
-it could significantly improve performance.
 
 ## License
 

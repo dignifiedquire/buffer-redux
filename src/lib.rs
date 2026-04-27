@@ -99,40 +99,9 @@
 //! as the `.make_room()` methods, and is utilized by [`policy::MinBuffered`](policy::MinBuffered)
 //! and [`policy::FlushExact`](policy::FlushExact).
 //!
-//! ### Ringbuffers / `slice-deque` Feature
-//! Instead of moving data, however, it is also possible to use virtual-memory tricks to
-//! allocate a ringbuffer that loops around on itself in memory and thus is always contiguous,
-//! as described in [the Wikipedia article on Ringbuffers][ringbuf-wikipedia].
-//!
-//! This is the exact trick used by [the `slice-deque` crate](https://crates.io/crates/slice-deque),
-//! which is now provided as an optional feature `slice-deque` exposed via the
-//! `new_ringbuf()` and `with_capacity_ringbuf()` constructors added to the buffered types here.
-//! When a buffered type is constructed using one of these functions, `.make_room()` is turned into
-//! a no-op as consuming bytes from the head of the buffer simultaneously makes room at the tail.
-//! However, this has some caveats:
-//!
-//! * It is only available on target platforms with virtual memory support, namely fully fledged
-//!   OSes such as Windows and Unix-derivative platforms like Linux, OS X, BSD variants, etc.
-//!
-//! * The default capacity varies based on platform, and custom capacities are rounded up to a
-//!   multiple of their minimum size, typically the page size of the platform.
-//!   Windows' minimum size is comparably quite large (**64 KiB**) due to some legacy reasons,
-//!   so this may be less optimal than the default capacity for a normal buffer (8 KiB) for some
-//!   use-cases.
-//!
-//! * Due to the nature of the virtual-memory trick, the virtual address space the buffer
-//!   allocates will be double its capacity. This means that your program will *appear* to use more
-//!   memory than it would if it was using a normal buffer of the same capacity. The physical memory
-//!   usage will be the same in both cases, but if address space is at a premium in your application
-//!   (32-bit targets) then this may be a concern.
-//!
-//! [ringbuf-wikipedia]: https://en.wikipedia.org/wiki/Circular_buffer#Optimization
 #![warn(missing_docs)]
 
-// std::io's tests require exact allocation which slice_deque cannot provide
 mod buffer;
-#[cfg(all(test, feature = "slice-deque"))]
-mod ringbuf_tests;
 #[cfg(test)]
 mod std_tests;
 
@@ -162,18 +131,9 @@ const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 /// To change this type's behavior, change the policy with [`.set_policy()`] using a type
 /// from the [`policy` module] or your own implementation of [`ReaderPolicy`].
 ///
-/// Policies that perform alternating reads and consumes without completely emptying the buffer
-/// may benefit from using a ringbuffer via the [`new_ringbuf()`] and [`with_capacity_ringbuf()`]
-/// constructors. Ringbuffers are only available on supported platforms with the
-/// `slice-deque` feature and have some other caveats; see [the crate root docs][ringbufs-root]
-/// for more details.
-///
 /// [`.set_policy()`]: BufReader::set_policy
 /// [`policy` module]: policy
 /// [`ReaderPolicy`]: policy::ReaderPolicy
-/// [`new_ringbuf()`]: BufReader::new_ringbuf
-/// [`with_capacity_ringbuf()`]: BufReader::with_capacity_ringbuf
-/// [ringbufs-root]: index.html#ringbuffers--slice-deque-feature
 pub struct BufReader<R, P = StdPolicy> {
     // First field for null pointer optimization.
     buf: Buffer,
@@ -195,40 +155,6 @@ impl<R> BufReader<R, StdPolicy> {
     /// allocator.
     pub fn with_capacity(cap: usize, inner: R) -> Self {
         Self::with_buffer(Buffer::with_capacity(cap), inner)
-    }
-
-    /// Create a new `BufReader` wrapping `inner`, utilizing a ringbuffer with the default capacity
-    /// and `ReaderPolicy`.
-    ///
-    /// A ringbuffer never has to move data to make room; consuming bytes from the head
-    /// simultaneously makes room at the tail. This is useful in conjunction with a policy like
-    /// [`MinBuffered`](policy::MinBuffered) to ensure there is always room to read more data
-    /// if necessary, without expensive copying operations.
-    ///
-    /// Only available on platforms with virtual memory support and with the `slice-deque` feature
-    /// enabled. The default capacity will differ between Windows and Unix-derivative targets.
-    /// See [`Buffer::new_ringbuf()`](struct.Buffer.html#method.new_ringbuf)
-    /// or [the crate root docs](index.html#ringbuffers--slice-deque-feature) for more info.
-    #[cfg(feature = "slice-deque")]
-    pub fn new_ringbuf(inner: R) -> Self {
-        Self::with_capacity_ringbuf(DEFAULT_BUF_SIZE, inner)
-    }
-
-    /// Create a new `BufReader` wrapping `inner`, utilizing a ringbuffer with *at least* the given
-    /// capacity and the default `ReaderPolicy`.
-    ///
-    /// A ringbuffer never has to move data to make room; consuming bytes from the head
-    /// simultaneously makes room at the tail. This is useful in conjunction with a policy like
-    /// [`MinBuffered`](policy::MinBuffered) to ensure there is always room to read more data
-    /// if necessary, without expensive copying operations.
-    ///
-    /// Only available on platforms with virtual memory support and with the `slice-deque` feature
-    /// enabled. The capacity will be rounded up to the minimum size for the target platform.
-    /// See [`Buffer::with_capacity_ringbuf()`](struct.Buffer.html#method.with_capacity_ringbuf)
-    /// or [the crate root docs](index.html#ringbuffers--slice-deque-feature) for more info.
-    #[cfg(feature = "slice-deque")]
-    pub fn with_capacity_ringbuf(cap: usize, inner: R) -> Self {
-        Self::with_buffer(Buffer::with_capacity_ringbuf(cap), inner)
     }
 
     /// Wrap `inner` with an existing `Buffer` instance and the default `ReaderPolicy`.
@@ -269,8 +195,6 @@ impl<R, P> BufReader<R, P> {
 
     /// Move data to the start of the buffer, making room at the end for more
     /// reading.
-    ///
-    /// This is a no-op with the `*_ringbuf()` constructors (requires `slice-deque` feature).
     pub fn make_room(&mut self) {
         self.buf.make_room();
     }
@@ -472,18 +396,9 @@ impl<R: Seek, P: ReaderPolicy> Seek for BufReader<R, P> {
 /// To change this type's behavior, change the policy with [`.set_policy()`] using a type
 /// from the [`policy` module] or your own implentation of [`WriterPolicy`].
 ///
-/// Policies that perform alternating writes and flushes without completely emptying the buffer
-/// may benefit from using a ringbuffer via the [`new_ringbuf()`] and [`with_capacity_ringbuf()`]
-/// constructors. Ringbuffers are only available on supported platforms with the
-/// `slice-deque` feature and have some caveats; see [the docs at the crate root][ringbufs-root]
-/// for more details.
-///
 /// [`.set_policy()`]: BufWriter::set_policy
 /// [`policy` module]: policy
 /// [`WriterPolicy`]: policy::WriterPolicy
-/// [`new_ringbuf()`]: BufWriter::new_ringbuf
-/// [`with_capacity_ringbuf()`]: BufWriter::with_capacity_ringbuf
-/// [ringbufs-root]: index.html#ringbuffers--slice-deque-feature
 pub struct BufWriter<W: Write, P = StdPolicy> {
     buf: Buffer,
     inner: W,
@@ -505,40 +420,6 @@ impl<W: Write> BufWriter<W> {
     /// allocator.
     pub fn with_capacity(cap: usize, inner: W) -> Self {
         Self::with_buffer(Buffer::with_capacity(cap), inner)
-    }
-
-    /// Create a new `BufWriter` wrapping `inner`, utilizing a ringbuffer with the default
-    /// capacity and [`WriterPolicy`](policy::WriterPolicy).
-    ///
-    /// A ringbuffer never has to move data to make room; consuming bytes from the head
-    /// simultaneously makes room at the tail. This is useful in conjunction with a policy like
-    ///  [`FlushExact`](policy::FlushExact) to ensure there is always room to write more data if
-    /// necessary, without expensive copying operations.
-    ///
-    /// Only available on platforms with virtual memory support and with the `slice-deque` feature
-    /// enabled. The default capacity will differ between Windows and Unix-derivative targets.
-    /// See [`Buffer::new_ringbuf()`](Buffer::new_ringbuf)
-    /// or [the crate root docs](index.html#ringbuffers--slice-deque-feature) for more info.
-    #[cfg(feature = "slice-deque")]
-    pub fn new_ringbuf(inner: W) -> Self {
-        Self::with_buffer(Buffer::new_ringbuf(), inner)
-    }
-
-    /// Create a new `BufWriter` wrapping `inner`, utilizing a ringbuffer with *at least* `cap`
-    /// capacity and the default [`WriterPolicy`](policy::WriterPolicy).
-    ///
-    /// A ringbuffer never has to move data to make room; consuming bytes from the head
-    /// simultaneously makes room at the tail. This is useful in conjunction with a policy like
-    /// [`FlushExact`](policy::FlushExact) to ensure there is always room to write more data if
-    /// necessary, without expensive copying operations.
-    ///
-    /// Only available on platforms with virtual memory support and with the `slice-deque` feature
-    /// enabled. The capacity will be rounded up to the minimum size for the target platform.
-    /// See [`Buffer::with_capacity_ringbuf()`](Buffer::with_capacity_ringbuf)
-    /// or [the crate root docs](index.html#ringbuffers--slice-deque-feature) for more info.
-    #[cfg(feature = "slice-deque")]
-    pub fn with_capacity_ringbuf(cap: usize, inner: W) -> Self {
-        Self::with_buffer(Buffer::with_capacity_ringbuf(cap), inner)
     }
 
     /// Create a new `BufWriter` wrapping `inner`, utilizing the existing [`Buffer`](Buffer)
@@ -613,8 +494,6 @@ impl<W: Write, P> BufWriter<W, P> {
 
     /// Move data to the start of the buffer, making room at the end for more
     /// writing.
-    ///
-    /// This is a no-op with the `*_ringbuf()` constructors (requires `slice-deque` feature).
     pub fn make_room(&mut self) {
         self.buf.make_room();
     }
@@ -744,18 +623,6 @@ impl<W: Write> LineWriter<W> {
     /// Wrap `inner` with the given buffer capacity.
     pub fn with_capacity(cap: usize, inner: W) -> Self {
         Self::with_buffer(Buffer::with_capacity(cap), inner)
-    }
-
-    /// Wrap `inner` with the default buffer capacity using a ringbuffer.
-    #[cfg(feature = "slice-deque")]
-    pub fn new_ringbuf(inner: W) -> Self {
-        Self::with_buffer(Buffer::new_ringbuf(), inner)
-    }
-
-    /// Wrap `inner` with the given buffer capacity using a ringbuffer.
-    #[cfg(feature = "slice-deque")]
-    pub fn with_capacity_ringbuf(cap: usize, inner: W) -> Self {
-        Self::with_buffer(Buffer::with_capacity_ringbuf(cap), inner)
     }
 
     /// Wrap `inner` with an existing `Buffer` instance.
@@ -901,56 +768,6 @@ impl Buffer {
         }
     }
 
-    /// Allocate a buffer with a default capacity that never needs to move data to make room
-    /// (consuming from the head simultaneously makes more room at the tail).
-    ///
-    /// The default capacity varies based on the target platform:
-    ///
-    /// * Unix-derivative platforms; Linux, OS X, BSDs, etc: **8KiB** (the default buffer size for
-    ///   `std::io` buffered types)
-    /// * Windows: **64KiB** because of legacy reasons, of course (see below)
-    ///
-    /// Only available on platforms with virtual memory support and with the `slice-deque` feature
-    /// enabled. The current platforms that are supported/tested are listed
-    /// [in the README for the `slice-deque` crate][slice-deque].
-    ///
-    /// [slice-deque]: https://github.com/gnzlbg/slice_deque#platform-support
-    #[cfg(feature = "slice-deque")]
-    pub fn new_ringbuf() -> Self {
-        Self::with_capacity_ringbuf(DEFAULT_BUF_SIZE)
-    }
-
-    /// Allocate a buffer with *at least* the given capacity that never needs to move data to
-    /// make room (consuming from the head simultaneously makes more room at the tail).
-    ///
-    /// The capacity will be rounded up to the minimum size for the current target:
-    ///
-    /// * Unix-derivative platforms; Linux, OS X, BSDs, etc: the next multiple of the page size
-    ///   (typically 4KiB but can vary based on system configuration)
-    /// * Windows: the next muliple of **64KiB**; see [this Microsoft dev blog post][Win-why-64k]
-    ///   for why it's 64KiB and not the page size (TL;DR: Alpha AXP needs it and it's applied on
-    ///   all targets for consistency/portability)
-    ///
-    /// [Win-why-64k]: https://blogs.msdn.microsoft.com/oldnewthing/20031008-00/?p=42223
-    ///
-    /// Only available on platforms with virtual memory support and with the `slice-deque` feature
-    /// enabled. The current platforms that are supported/tested are listed
-    /// [in the README for the `slice-deque` crate][slice-deque].
-    ///
-    /// [slice-deque]: https://github.com/gnzlbg/slice_deque#platform-support
-    #[cfg(feature = "slice-deque")]
-    pub fn with_capacity_ringbuf(cap: usize) -> Self {
-        Buffer {
-            buf: BufImpl::with_capacity_ringbuf(cap),
-            zeroed: 0,
-        }
-    }
-
-    /// Return `true` if this is a ringbuffer.
-    pub fn is_ringbuf(&self) -> bool {
-        self.buf.is_ringbuf()
-    }
-
     /// Return the number of bytes currently in this buffer.
     ///
     /// Equivalent to `self.buf().len()`.
@@ -970,8 +787,7 @@ impl Buffer {
     /// Returns the total amount of free space in the buffer, including bytes
     /// already consumed from the head.
     ///
-    /// This will be greater than or equal to `usable_space()`. On supported platforms
-    /// with the `slice-deque` feature enabled, it should be equal.
+    /// This will be greater than or equal to `usable_space()`.
     pub fn free_space(&self) -> usize {
         self.capacity() - self.len()
     }
@@ -987,8 +803,6 @@ impl Buffer {
     }
 
     /// Move bytes down in the buffer to maximize usable space.
-    ///
-    /// This is a no-op on supported platforms with the `slice-deque` feature enabled.
     pub fn make_room(&mut self) {
         self.buf.make_room();
     }
